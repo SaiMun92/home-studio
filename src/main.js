@@ -1,0 +1,308 @@
+import { createViewer } from './scene.js';
+import { ROOMS, PLAN, canPlace, pointInRoom, roomRegions, footprint, KITCHEN_RUN_LENGTH, kitchenRun } from './layout.js';
+import { createDefaultState, createHistory, validateDesign } from './state.js';
+import { FURNITURE_CATALOG, getCatalogItem } from './catalog.js';
+
+const STORAGE_KEY = 'home-studio-design-v1';
+const PAINTS = [['Off-white','#eeeae2'],['Linen','#d6cbbb'],['Sage','#a6b29a'],['Clay','#bf8b72'],['Mist','#b5c3c5'],['Olive','#778166'],['Ink','#485b65'],['Chalk','#faf8f1']];
+const FINISHES = [['Original','#c76530'],['Oak','#b39268'],['White','#f0eee7'],['Sage','#8b9b80'],['Charcoal','#404642'],['Blue','#697e8b']];
+const MODULE_TYPES = {doors:'Double doors',drawers:'Drawers',sink:'Sink unit',hob:'Hob & oven',dishwasher:'Dishwasher',pantry:'Tall pantry'};
+const NAV_ROOMS = ROOMS.filter(r=>r.walkable&&!['shelter','hall'].includes(r.id));
+const ROOM_ALIASES = {master:'master-bedroom',bedroom2:'bedroom-2',bath2:'bath-2',masterbath:'master-bath',entry:'entrance',hall:'hallway'};
+const esc = value => String(value??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
+const fmt = value => Number(value).toFixed(2);
+const mm = value => Math.round(value*1000)+' mm';
+const round = value => Math.round(value*1000)/1000;
+const roomById = id => ROOMS.find(r=>r.id===id);
+const paths = {
+ home:'<path d="m3 10 9-7 9 7v10H3V10Z"/><path d="M9 20v-7h6v7"/>',
+ undo:'<path d="M8 5 3 10l5 5M3 10h11a6 6 0 0 1 0 12"/>', redo:'<path d="m16 5 5 5-5 5m5-5H10a6 6 0 0 0 0 12"/>',
+ image:'<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1.5"/><path d="m3 17 6-6 4 4 3-3 5 5"/>',
+ download:'<path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/>',upload:'<path d="M12 16V4m-5 5 5-5 5 5M4 16v5h16v-5"/>',
+ camera:'<path d="M3 7h4l2-3h6l2 3h4v13H3V7Z"/><circle cx="12" cy="13" r="4"/>',
+ plus:'<path d="M12 5v14M5 12h14"/>',minus:'<path d="M5 12h14"/>',close:'<path d="m5 5 14 14M19 5 5 19"/>',
+ cube:'<path d="m12 2 10 5v10l-10 5-10-5V7l10-5Z"/><path d="m2 7 10 5 10-5M12 12v10M7 4.5l10 5"/>',
+ plan:'<path d="M3 3h18v18H3V3Zm0 10h8V3m0 10v8m0-13h10m-5 0v7h5"/>',
+ walk:'<circle cx="13" cy="4" r="2"/><path d="m7 21 3-6m6 6-2-8 1-5m-9 5 4-5h5l3 5h3M10 8l-1 7h5"/>',
+ check:'<path d="m5 12 4 4L19 6"/>',reset:'<path d="M3 11a9 9 0 1 1 2 7M3 4v7h7"/>',
+ arrow:'<path d="M4 12h16m-6-6 6 6-6 6"/>',left:'<path d="M20 12H4m6-6-6 6 6 6"/>',up:'<path d="M12 20V4m-6 6 6-6 6 6"/>',down:'<path d="M12 4v16m-6-6 6 6 6-6"/>',
+ copy:'<rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V3H3v13h5"/>',trash:'<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/>',
+ lock:'<rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V6a4 4 0 0 1 8 0v4"/>',
+ palette:'<circle cx="12" cy="12" r="9"/><circle cx="8" cy="8" r="1"/><circle cx="14" cy="7" r="1"/><circle cx="17" cy="12" r="1"/><path d="M4 16h6a3 3 0 0 1 3 3v2"/>',
+ cabinet:'<rect x="3" y="4" width="18" height="17" rx="1"/><path d="M3 10h18M12 10v11M7 7h2m6 0h2m-8 7v3m6-3v3"/>',
+ sofa:'<path d="M5 11V5h14v6M3 10h4v5h10v-5h4v10H3V10Zm2 10v2m14-2v2"/>',
+ armchair:'<path d="M6 11V4h12v7M3 10h4v6h10v-6h4v10H3V10Zm2 10v2m14-2v2"/>',
+ coffee:'<path d="M2 8h20v5H2V8Zm3 5v7m14-7v7"/>',dining:'<path d="M4 7h16v6H4V7Zm3 6v7m10-7v7M1 5v12h3m19-12v12h-3"/>',
+ bed:'<path d="M3 21V5h18v16M3 10h18M3 18h18M6 6v4m6-4v4m6-4v4"/>',singlebed:'<path d="M6 21V4h12v17M6 10h12M6 18h12M9 5v5m6-5v5"/>',
+ desk:'<path d="M2 8h20M4 8v13m16-13v13M8 8V3h8v5M9 14h6v6H9v-6Zm3 6v3"/>',wardrobe:'<rect x="4" y="2" width="16" height="20" rx="1"/><path d="M12 2v20m-3-12v4m6-4v4"/>',
+ console:'<rect x="2" y="10" width="20" height="9" rx="1"/><path d="M8 10v9m8-9v9M4 19v3m16-3v3M6 10V3h12v7"/>',
+ plant:'<path d="m7 16 2 6h6l2-6H7Zm5 0V7m0 5c-7 0-9-5-7-8 5 0 7 4 7 8Zm0-3c0-5 3-8 8-7 0 5-3 7-8 7Z"/>',
+ bath:'<path d="M3 12h18l-2 7H5l-2-7Zm2 7v3m14-3v3M5 12V5a3 3 0 0 1 6 0H8"/>'
+};
+const icon = name => '<svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(paths[name]||paths.home)+'</svg>';
+const roomIcon = r => ({living:'sofa',dining:'dining',master:'bed',bedroom2:'singlebed',study:'desk',kitchen:'cabinet',bath2:'bath',masterbath:'bath',yard:'plant',entry:'home'})[r.id]||'plan';
+function normalizeDesign(input,previous=null){
+ const next=validateDesign(input);
+ for(const item of next.furniture){
+  const placement=canPlace(item,next.furniture,next.kitchen);if(placement.ok)continue;
+  // Geometry corrections can expose overlaps in a saved design. Keep unchanged
+  // pieces editable while the owner moves them, but reject new invalid placements.
+  const old=previous?.furniture.find(f=>f.id===item.id);
+  const unchanged=old&&['type','x','z','rotation'].every(key=>old[key]===item[key])&&previous.kitchen.depth===next.kitchen.depth;
+  if(unchanged&&!canPlace(old,previous.furniture,previous.kitchen).ok)continue;
+  throw new Error(item.label+': '+placement.reason);
+ }
+ return next;
+}
+let recoveryMessage='',storageAvailable=true;
+function restoreStoredDesign(){
+ let stored;
+ try{stored=localStorage.getItem(STORAGE_KEY);}catch{storageAvailable=false;recoveryMessage='Browser storage is unavailable. Export your design to keep a copy.';}
+ if(stored){try{
+  const saved=validateDesign(JSON.parse(stored));
+  if(saved.furniture.some(item=>!canPlace(item,saved.furniture,saved.kitchen).ok))recoveryMessage='Your saved design is loaded. Some furniture overlaps the updated layout; move these pieces to a clear space.';
+  return saved;
+ }catch{try{localStorage.setItem(STORAGE_KEY+'-recovery',stored);}catch{}recoveryMessage='The saved design could not be loaded. The original layout has been restored.';}}
+ return createDefaultState();
+}
+const history=createHistory(restoreStoredDesign());
+let state=history.current,currentRoom='living',selectedFurniture=null,selectedCabinet=state.kitchen.modules[0].id,activeTab='walls',cameraMode='dollhouse';
+let viewer,manifest=null,manifestError=false,galleryTab='photos',galleryDetail=null,toastTimer;
+const $=selector=>document.querySelector(selector);
+$('#app').innerHTML=[
+ '<header class="app-header"><a class="brand" href="#" aria-label="Home Studio, show whole home"><span class="brand-mark">'+icon('home')+'</span><span>home<span class="brand-light">studio</span></span></a>',
+ '<div class="header-project"><span class="slash">/</span><span class="project-dot"></span><span>Our next chapter <span class="muted">· Type C1</span></span></div>',
+ '<div class="header-actions"><span class="save-status" id="save-status" aria-live="polite">'+icon('check')+' Saved on this device</span><div class="history-buttons">',
+ '<button class="icon-button" data-action="undo" title="Undo (⌘/Ctrl Z)" aria-label="Undo">'+icon('undo')+'</button><button class="icon-button" data-action="redo" title="Redo (⌘/Ctrl Shift Z)" aria-label="Redo">'+icon('redo')+'</button></div>',
+ '<button class="secondary-button" data-action="references">'+icon('image')+'<span>References</span></button><button class="icon-button bordered" data-action="import" title="Import a design" aria-label="Import design">'+icon('upload')+'</button><button class="primary-button" data-action="export">'+icon('download')+'<span>Export design</span></button></div></header>',
+ '<main class="workspace"><aside class="room-sidebar" aria-label="Rooms"><div class="project-intro"><p class="eyebrow">A PLACE TO CALL YOURS</p><h1>Your space,<br>reimagined.</h1><p class="project-meta"><span>2 beds + study</span><span>'+PLAN.area+' m² <small>on plan</small></span></p></div>',
+ '<div class="section-heading"><span>YOUR ROOMS</span><span class="count">'+NAV_ROOMS.length+'</span></div><nav class="room-list" id="room-list" aria-label="Choose a room"></nav>',
+ '<div class="sidebar-bottom"><button class="plan-card" data-action="plan"><span class="plan-image"><img src="./references/floorplan-original.png" alt="Original Type C1 floor plan"></span><span><strong>The original plan</strong><small>93 m² · mirrored layout</small></span>'+icon('arrow')+'</button><p class="privacy-note">'+icon('lock')+' Your home stays on this device.</p></div></aside>',
+ '<section class="scene-panel" aria-label="Interactive 3D home"><canvas id="scene" tabindex="0" aria-label="Interactive home. Drag to orbit, scroll to zoom. Select furniture to move it."></canvas>',
+ '<div class="scene-heading"><p class="eyebrow">HOME, FROM A NEW PERSPECTIVE</p><h2 id="view-title">The whole picture.</h2><p id="view-subtitle">A little imagination. A space that feels like you.</p></div>',
+ '<div class="scene-top-tools"><span class="tiny-count" id="scene-count">'+state.furniture.length+' pieces</span><button class="glass-button" data-action="screenshot" title="Download this view" aria-label="Download screenshot">'+icon('camera')+'</button><button class="glass-button" data-action="reset-view" title="Show the whole home" aria-label="Reset camera">'+icon('cube')+'</button></div>',
+ '<div id="loading" class="loading"><span class="loader"></span><span>Making room for your ideas…</span></div><div class="scene-zoom"><button class="glass-button" data-action="zoom-in" title="Zoom in" aria-label="Zoom in">'+icon('plus')+'</button><button class="glass-button" data-action="zoom-out" title="Zoom out" aria-label="Zoom out">'+icon('minus')+'</button></div>',
+ '<div class="walk-controls" id="walk-controls" hidden><strong>Make yourself at home</strong><span>W A S D / arrow keys to move · drag to look</span><div class="walk-touch"><button data-walk="a" aria-label="Walk left">←</button><button data-walk="w" aria-label="Walk forward">↑</button><button data-walk="s" aria-label="Walk backward">↓</button><button data-walk="d" aria-label="Walk right">→</button></div></div>',
+ '<div class="scene-bottom"><div class="view-switch" aria-label="Camera view"><button data-view="dollhouse" class="active" aria-pressed="true">'+icon('cube')+'<span>Dollhouse</span></button><button data-view="top" aria-pressed="false">'+icon('plan')+'<span>Floor plan</span></button><button data-view="walk" aria-pressed="false">'+icon('walk')+'<span>Walk through</span></button></div>',
+ '<div class="scene-options"><label><input type="checkbox" id="show-labels" checked> Room labels</label><label><input type="checkbox" id="full-walls"> Full walls</label><label><input type="checkbox" id="show-ceiling"> Ceiling</label></div></div>',
+ '<div class="scene-footnote"><span id="interaction-hint">Drag to orbit · scroll to zoom · select a room or piece</span><span>Concept model · dimensions estimated</span></div></section>',
+ '<aside class="inspector" aria-label="Design editor"><div class="inspector-heading"><p class="eyebrow">MAKE IT YOURS</p><h2>A change of feeling.</h2></div><div class="inspector-tabs" role="tablist" aria-label="Design tools">',
+ '<button id="tab-walls" data-tab="walls" class="active" role="tab" aria-selected="true" aria-controls="inspector-content">'+icon('palette')+'Walls</button><button id="tab-kitchen" data-tab="kitchen" role="tab" aria-selected="false" aria-controls="inspector-content">'+icon('cabinet')+'Kitchen</button><button id="tab-furniture" data-tab="furniture" role="tab" aria-selected="false" aria-controls="inspector-content">'+icon('sofa')+'Furniture</button></div>',
+ '<div id="inspector-content" role="tabpanel" aria-labelledby="tab-walls"></div><div class="inspector-footer"><button class="text-button" data-action="restore">'+icon('reset')+' Restore original design</button><span>Every idea can be undone.</span></div></aside></main>',
+ '<input type="file" id="import-file" accept=".json,application/json" hidden><dialog id="reference-dialog" aria-labelledby="reference-title"><div class="dialog-header"><div><p class="eyebrow">THE STARTING POINT</p><h2 id="reference-title">Your home, as it is.</h2></div><button class="icon-button" data-action="close-gallery" aria-label="Close reference library">'+icon('close')+'</button></div><div class="gallery-tabs" id="gallery-tabs"></div><div id="gallery-content"></div></dialog><div class="toast" id="toast" role="status" aria-live="polite"></div>'
+].join('');
+function toast(message){const element=$('#toast');element.textContent=message;element.classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>element.classList.remove('visible'),4800);}
+function saveDesign(){
+ if(storageAvailable){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));}catch{storageAvailable=false;toast('This browser could not save your changes. Export your design to keep a copy.');}}
+ $('#save-status').innerHTML=icon(storageAvailable?'check':'download')+' '+(storageAvailable?'Saved on this device':'Session only · export to save');
+}
+function syncDesign(){
+ state=history.current;
+ if(selectedFurniture&&!state.furniture.some(i=>i.id===selectedFurniture))selectedFurniture=null;
+ if(!state.kitchen.modules.some(m=>m.id===selectedCabinet))selectedCabinet=state.kitchen.modules[0].id;
+ viewer?.setState(state);viewer?.setSelected(selectedFurniture);renderRoomList();renderInspector();
+ $('[data-action="undo"]').disabled=!history.canUndo;$('[data-action="redo"]').disabled=!history.canRedo;
+ $('#scene-count').textContent=state.furniture.length+' pieces';$('.plan-card small').textContent='93 m² · '+(state.mirrored?'mirrored layout':'brochure layout');saveDesign();
+}
+function commit(mutator,message=''){
+ try{const draft=history.current,result=mutator(draft);history.commit(normalizeDesign(result===undefined?draft:result,result===undefined?state:null));syncDesign();if(message)toast(message);return true;}
+ catch(error){toast(error instanceof Error?error.message:'That change could not be applied.');renderInspector();viewer?.setState(state);viewer?.setSelected(selectedFurniture);return false;}
+}
+function renderRoomList(){
+ $('#room-list').innerHTML=NAV_ROOMS.map(r=>'<button class="room-button '+(r.id===currentRoom?'active':'')+'" data-room="'+r.id+'" aria-current="'+(r.id===currentRoom)+'"><span class="room-symbol">'+icon(roomIcon(r))+'</span><span>'+esc(r.name)+'</span><span class="room-color" style="--color:'+state.wallColors[r.id]+'" aria-label="Wall paint '+state.wallColors[r.id]+'"></span></button>').join('');
+}
+function selectRoom(id,focus=true){const room=roomById(id);if(!room?.walkable)return;currentRoom=id;selectedFurniture=null;viewer?.setSelected(null);if(focus)viewer?.focusRoom(id);renderRoomList();renderInspector();updateViewCopy(focus?room.name:null);}
+function selectFurniture(id,focus=false){
+ const item=state.furniture.find(i=>i.id===id);selectedFurniture=item?.id||null;
+ if(item){const room=pointInRoom(item.x,item.z);if(room?.walkable)currentRoom=room.id;if(focus&&room)viewer?.focusRoom(room.id);}
+ viewer?.setSelected(selectedFurniture);renderRoomList();setTab('furniture');
+}
+function setTab(tab){if(!['walls','kitchen','furniture'].includes(tab))return;activeTab=tab;document.querySelectorAll('[data-tab]').forEach(b=>{b.classList.toggle('active',b.dataset.tab===tab);b.setAttribute('aria-selected',String(b.dataset.tab===tab));});$('#inspector-content').setAttribute('aria-labelledby','tab-'+tab);renderInspector();}
+function roomOptions(){return ROOMS.filter(r=>r.walkable).map(r=>'<option value="'+r.id+'" '+(r.id===currentRoom?'selected':'')+'>'+esc(r.name)+'</option>').join('');}
+function swatches(values,selected,action){return '<div class="swatch-grid">'+values.map(([label,color])=>'<button class="swatch '+(color===selected?'selected':'')+'" data-'+action+'="'+color+'" title="'+label+'" aria-label="'+label+'" aria-pressed="'+(color===selected)+'"><span style="--swatch:'+color+'">'+(color===selected?icon('check'):'')+'</span><small>'+label+'</small></button>').join('')+'</div>';}
+function colorField(id,label,value){return '<label class="custom-color" for="'+id+'"><input type="color" id="'+id+'" value="'+value+'" data-field="'+id+'" aria-label="'+label+'"><span>'+label+'</span><code>'+value.toUpperCase()+'</code></label>';}
+function rangeField(field,label,value,min,max,step){return '<div class="range-field"><label for="'+field+'"><span>'+label+'</span><output id="'+field+'-output" for="'+field+'">'+mm(value)+'</output></label><input type="range" id="'+field+'" data-field="'+field+'" value="'+value+'" min="'+min+'" max="'+max+'" step="'+step+'" aria-label="'+label+'"></div>';}
+function referenceCallout(room){
+ const alias=ROOM_ALIASES[room.id]||room.id,photos=manifest?.photos||[],frames=manifest?.videos.flatMap(v=>v.frames)||[];
+ const item=photos.find(p=>room.reference&&p.sourcePath===room.reference)||photos.find(p=>p.rooms.includes(alias))||frames.find(f=>f.rooms.includes(alias));
+ if(item)return '<button class="reference-callout" data-reference="'+esc(item.id)+'"><span class="reference-thumb"><img src="'+esc(item.src)+'" alt="'+esc(item.label)+'"></span><span><strong>A look at the original</strong><small>Open room reference '+icon('arrow')+'</small></span></button>';
+ return '<p class="body-note subtle">'+(['master','masterbath','shelter'].includes(room.id)?'Based on the floor plan. Furnishings and finishes in this room are placeholders.':'Dimensions and finishes are visual estimates from the supplied references.')+'</p>';
+}
+
+
+function wallsPanel(){
+ const room=roomById(currentRoom),color=state.wallColors[currentRoom];
+ return [
+ '<section class="editor-section"><div class="field-heading"><h3>Set the mood.</h3><p>A fresh coat. A whole new feeling.</p></div><label class="field-label" for="paint-room">Your room</label><select id="paint-room">'+roomOptions()+'</select>',
+ '<div class="paint-preview" style="--paint:'+color+'" role="img" aria-label="Preview of '+esc(room.name)+' wall paint"><div class="preview-window"><i></i><i></i></div><div class="preview-floor"></div><div class="preview-plant">'+icon('plant')+'</div><span>'+esc(room.name)+'</span></div>',
+ '<label class="field-label spaced">A considered palette</label>'+swatches(PAINTS,color,'paint'),colorField('wall-color','Choose a custom color',color),
+ '<button class="secondary-button wide" data-action="paint-all">Apply color throughout '+icon('arrow')+'</button></section><section class="editor-section">',referenceCallout(room),
+ '<label class="toggle-row"><span>Mirrored floor plan<small>Your confirmed home orientation.</small></span><input id="mirror-home" type="checkbox" '+(state.mirrored?'checked':'')+'></label><p class="body-note subtle">93 m² as shown on the brochure. Room sizes and ceiling height are estimated; colors vary with light and screen.</p></section>'
+ ].join('');
+}
+function kitchenPanel(){
+ const k=state.kitchen,m=k.modules.find(m=>m.id===selectedCabinet)||k.modules[0],total=k.modules.reduce((n,m)=>n+m.width,0);
+ return [
+ '<section class="editor-section"><div class="field-heading"><h3>Your kitchen, your way.</h3><p>Explore the materials and the details.</p></div><button class="secondary-button wide" data-action="focus-kitchen">'+icon('cabinet')+' Take me to the kitchen '+icon('arrow')+'</button>',
+ '<label class="field-label spaced">Lower cabinet finish</label>'+swatches(FINISHES,k.color,'finish'),colorField('kitchen-color','Custom lower color',k.color),
+ '<div class="color-pair">'+colorField('upper-color','Upper cabinets',k.upperColor)+colorField('counter-color','Countertop',k.counterColor)+'</div>',
+ '<label class="field-label spaced">Front style</label><div class="segmented" aria-label="Cabinet front style">'+['flat','shaker','slatted'].map(style=>'<button data-style="'+style+'" class="'+(k.style===style?'active':'')+'" aria-pressed="'+(k.style===style)+'">'+style[0].toUpperCase()+style.slice(1)+'</button>').join('')+'</div>',
+ '<label class="toggle-row"><span>Upper cabinets<small>Over the inner working run.</small></span><input type="checkbox" id="upper-cabinets" '+(k.upper?'checked':'')+'></label></section>',
+ '<section class="editor-section"><div class="field-heading"><h3>Make room for the everyday.</h3><p>Select a module to shape the working run.</p></div><div class="cabinet-diagram" aria-label="Kitchen cabinet modules">',
+ k.modules.map((entry,i)=>'<button data-module="'+entry.id+'" class="'+(entry.id===m.id?'active':'')+'" style="flex:'+entry.width+'" title="Module '+(i+1)+': '+MODULE_TYPES[entry.type]+', '+mm(entry.width)+'" aria-label="Select module '+(i+1)+': '+MODULE_TYPES[entry.type]+'" aria-pressed="'+(entry.id===m.id)+'">'+icon(entry.type==='pantry'?'wardrobe':'cabinet')+'<small>'+(i+1)+'</small></button>').join(''),
+ '</div><p class="module-caption"><span>Module '+(k.modules.indexOf(m)+1)+' selected</span><span>'+fmt(total)+' / '+fmt(KITCHEN_RUN_LENGTH)+' m</span></p>',
+ kitchenRun(k).fillLength>.001?'<p class="body-note subtle">'+mm(kitchenRun(k).fillLength)+' fitted end section continues to the wall. Add modules or increase their widths to replace it.</p>':'',
+ '<label class="field-label" for="module-type">Module function</label><select id="module-type">'+Object.entries(MODULE_TYPES).map(([type,label])=>'<option value="'+type+'" '+(m.type===type?'selected':'')+'>'+label+'</option>').join('')+'</select>',
+ rangeField('module-width','Module width',m.width,.3,1.2,.05),
+ m===k.modules[0]&&['drawers','doors'].includes(m.type)?'<p class="body-note subtle">This cabinet extends an additional '+mm(kitchenRun(k).frontExtensionLength)+' to meet the living-room tile edge.</p>':'',
+ '<div class="button-row"><button class="secondary-button" data-action="add-module" '+(total>KITCHEN_RUN_LENGTH-.3+1e-9||k.modules.length>=8?'disabled':'')+'>'+icon('plus')+' Add module</button><button class="icon-button bordered danger" data-action="remove-module" title="Remove selected module" aria-label="Remove selected module" '+(k.modules.length===1?'disabled':'')+'>'+icon('trash')+'</button></div>',
+ rangeField('kitchen-depth','Cabinet depth',k.depth,.45,.75,.01),rangeField('kitchen-height','Worktop height',k.height,.72,1.02,.01),
+ '<p class="body-note subtle">A design study with estimated dimensions. Confirm measurements, appliance clearances and service connections before fabrication.</p>',referenceCallout(roomById('kitchen')),'</section>'
+ ].join('');
+}
+function furniturePanel(){
+ const item=state.furniture.find(i=>i.id===selectedFurniture),entry=item&&getCatalogItem(item.type);
+ const options=state.furniture.map(i=>'<option value="'+i.id+'" '+(i.id===selectedFurniture?'selected':'')+'>'+esc(i.label)+' · '+esc(pointInRoom(i.x,i.z)?.name||'Home')+'</option>').join('');
+ const selection=item?[
+ '<div class="selected-item"><span class="item-icon">'+icon(item.type)+'</span><span><strong>'+esc(item.label)+'</strong><small>'+fmt(entry.width)+' × '+fmt(entry.depth)+' m · estimated footprint</small></span></div>',
+ '<label class="field-label" for="replace-furniture">Replace with</label><select id="replace-furniture">'+FURNITURE_CATALOG.map(i=>'<option value="'+i.type+'" '+(i.type===item.type?'selected':'')+'>'+esc(i.label)+'</option>').join('')+'</select>',
+ '<label class="field-label spaced">A different character</label><div class="segmented" aria-label="Furniture style">'+['classic','modern'].map(v=>'<button data-variant="'+v+'" class="'+(item.variant===v?'active':'')+'" aria-pressed="'+(item.variant===v)+'">'+(v==='classic'?'Classic':'Modern')+'</button>').join('')+'</div>',
+ colorField('furniture-color','Material color',item.color),
+ '<div class="position-controls"><div><label class="field-label">Move · 20 cm</label><div class="move-pad"><button class="icon-button bordered" data-move="up" title="Move toward the top of the plan" aria-label="Move up">'+icon('up')+'</button><button class="icon-button bordered" data-move="left" title="Move left on the plan" aria-label="Move left">'+icon('left')+'</button><span>'+icon('plan')+'</span><button class="icon-button bordered" data-move="right" title="Move right on the plan" aria-label="Move right">'+icon('arrow')+'</button><button class="icon-button bordered" data-move="down" title="Move toward the bottom of the plan" aria-label="Move down">'+icon('down')+'</button></div></div>',
+ '<div class="rotation-controls"><label class="field-label">Rotate · 45°</label><div class="button-row"><button class="icon-button bordered" data-rotate="-45" title="Rotate counterclockwise" aria-label="Rotate counterclockwise">'+icon('undo')+'</button><button class="icon-button bordered" data-rotate="45" title="Rotate clockwise" aria-label="Rotate clockwise">'+icon('redo')+'</button></div><button class="secondary-button" data-rotate="180" title="Face the opposite direction without moving the piece">Turn 180°</button><small>'+Math.round(item.rotation)+'° rotation</small></div></div>',
+ '<div class="button-row"><button class="secondary-button" data-action="duplicate">'+icon('copy')+' Duplicate</button><button class="secondary-button danger" data-action="delete">'+icon('trash')+' Remove</button></div><p class="body-note subtle">Drag a piece in the model, or use arrow keys to move and R to rotate. Moves keep walls, cabinets and other furniture clear.</p>'
+ ].join(''):'<div class="empty-selection">'+icon('sofa')+'<strong>Make a little room.</strong><p>Choose a piece in the model to move it, change its finish or try another style.</p></div>';
+ return '<section class="editor-section"><div class="field-heading"><h3>A place for everything.</h3><p>Find the pieces that make it feel like home.</p></div><label class="field-label" for="selected-furniture">Selected piece</label><select id="selected-furniture"><option value="">Choose a piece in your home</option>'+options+'</select>'+selection+'</section><section class="editor-section"><div class="field-heading"><h3>Find something you love.</h3><p>Add a piece to '+esc(roomById(currentRoom).name.toLowerCase())+'.</p></div><label class="field-label" for="furniture-room">Place new pieces in</label><select id="furniture-room">'+roomOptions()+'</select><div class="catalog-grid">'+FURNITURE_CATALOG.map(i=>'<button data-add="'+i.type+'" title="Add '+esc(i.label.toLowerCase())+'" aria-label="Add '+esc(i.label)+'"><span>'+icon(i.type)+'</span><strong>'+esc(i.label)+'</strong><small>'+fmt(i.width)+' × '+fmt(i.depth)+' m</small><i>'+icon('plus')+'</i></button>').join('')+'</div><p class="body-note subtle">Pieces are illustrative and sized approximately. A clear position is found automatically in your chosen room.</p></section>';
+}
+function renderInspector(){$('#inspector-content').innerHTML=activeTab==='walls'?wallsPanel():activeTab==='kitchen'?kitchenPanel():furniturePanel();}
+function updateViewCopy(roomName=null){
+ const titles={dollhouse:'The whole picture.',top:'Every room, in view.',walk:'Step inside your ideas.'};
+ const subtitles={dollhouse:'A little imagination. A space that feels like you.',top:state.mirrored?'Your confirmed mirrored layout, seen from above.':'The brochure layout, seen from above.',walk:'Explore the home at eye level.'};
+ $('#view-title').textContent=roomName?roomName+', reimagined.':titles[cameraMode];$('#view-subtitle').textContent=subtitles[cameraMode];
+ $('#interaction-hint').textContent=cameraMode==='walk'?'W A S D / arrows to move · drag to look around':cameraMode==='top'?'Select a room · drag furniture to rearrange · + / − to zoom':'Drag to orbit · scroll to zoom · select a room or piece';
+ $('#walk-controls').hidden=cameraMode!=='walk';$('.scene-zoom').hidden=cameraMode==='walk';
+}
+function setView(mode){if(!['dollhouse','top','walk'].includes(mode))return;cameraMode=mode;viewer?.setView(mode);document.querySelectorAll('[data-view]').forEach(b=>{b.classList.toggle('active',b.dataset.view===mode);b.setAttribute('aria-pressed',String(b.dataset.view===mode));});updateViewCopy();}
+function uniqueId(prefix){return prefix+'-'+(globalThis.crypto?.randomUUID?.()||Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9));}
+function findSpace(item,roomId=currentRoom){
+ const room=roomById(roomId);if(!room?.walkable)return null;
+ const [x1,z1,x2,z2]=room.bounds,center={x:(x1+x2)/2,z:(z1+z2)/2},regions=roomRegions(room);
+ const positions=regions.map(([left,top,right,bottom])=>({x:(left+right)/2,z:(top+bottom)/2}));
+ for(const [left,top,right,bottom] of regions)for(let x=left+.1;x<right;x+=.2)for(let z=top+.1;z<bottom;z+=.2)positions.push({x:round(x),z:round(z)});
+ positions.sort((a,b)=>Math.hypot(a.x-center.x,a.z-center.z)-Math.hypot(b.x-center.x,b.z-center.z));
+ for(const rotation of [...new Set([item.rotation||0,0,90])])for(const p of positions){
+  const candidate={...item,...p,rotation},inside=[[candidate.x,candidate.z],...footprint(candidate)].every(([x,z])=>pointInRoom(x,z)?.id===roomId);
+  if(inside&&canPlace(candidate,state.furniture,state.kitchen).ok)return candidate;
+ }
+ return null;
+}
+function addFurniture(type,source=null){
+ const entry=getCatalogItem(type);if(!entry)return;
+ const item=source?{...source,id:uniqueId(type)}:{id:uniqueId(type),type,label:entry.label,color:entry.color,variant:'classic',mirrored:false,rotation:0};
+ const candidate=findSpace(item);
+ if(!candidate){toast('There is no clear space for that '+entry.label.toLowerCase()+' in '+roomById(currentRoom).name+'. Try another room or move an existing piece.');return;}
+ if(commit(draft=>{draft.furniture.push(candidate);})){selectFurniture(candidate.id);toast(entry.label+' added to '+roomById(currentRoom).name+'.');}
+}
+function editFurniture(mutator){if(!selectedFurniture)return false;return commit(draft=>{const item=draft.furniture.find(i=>i.id===selectedFurniture);if(!item)throw new Error('Select a piece of furniture first.');mutator(item);});}
+function moveFurniture(direction){const mirror=state.mirrored?-1:1,offset={up:[0,-.2],down:[0,.2],left:[-.2*mirror,0],right:[.2*mirror,0]}[direction];if(offset)editFurniture(i=>{i.x=round(i.x+offset[0]);i.z=round(i.z+offset[1]);});}
+function removeFurniture(){if(selectedFurniture)commit(draft=>{draft.furniture=draft.furniture.filter(i=>i.id!==selectedFurniture);},'Piece removed. Undo brings it back.');}
+function download(data,filename,type){const dataUrl=typeof data==='string'&&data.startsWith('data:'),url=dataUrl?data:URL.createObjectURL(new Blob([data],{type})),a=document.createElement('a');a.href=url;a.download=filename;document.body.append(a);a.click();a.remove();if(!dataUrl)setTimeout(()=>URL.revokeObjectURL(url),1000);}
+
+
+const videoFrames=()=>manifest?manifest.videos.flatMap(video=>video.frames.map(frame=>({...frame,videoLabel:video.label,videoSource:video.sourcePath}))):[];
+const allReferences=()=>manifest?[...manifest.photos,...videoFrames(),manifest.floorplan]:[];
+function openGallery(tab='photos',detail=null){galleryTab=tab;galleryDetail=detail;renderGallery();const dialog=$('#reference-dialog');if(!dialog.open)dialog.showModal();}
+function showReference(id){const item=allReferences().find(i=>i.id===id);if(!item){openGallery();return;}openGallery(item.kind==='video-frame'?'videos':item.kind==='floorplan'?'plan':'photos',item.kind==='floorplan'?null:item.id);}
+function renderGallery(){
+ const content=$('#gallery-content');
+ $('#gallery-tabs').innerHTML=[['photos','Photos <span>'+(manifest?.photos.length||10)+'</span>'],['videos','Video moments <span>'+(manifest?.videos.reduce((n,v)=>n+v.frames.length,0)||28)+'</span>'],['plan','Original plan']].map(([tab,label])=>'<button data-gallery-tab="'+tab+'" class="'+(galleryTab===tab?'active':'')+'" aria-pressed="'+(galleryTab===tab)+'">'+label+'</button>').join('');
+ if(!manifest){content.innerHTML='<p class="gallery-note">'+(manifestError?'The reference library could not be loaded. Reload the page to try again.':'Opening your reference library…')+'</p>';return;}
+ if(galleryTab==='plan'){
+  content.innerHTML='<div class="plan-view"><img src="'+esc(manifest.floorplan.src)+'" alt="Original Type C1 floorplan showing 93 square metres"><div><p class="eyebrow">TYPE C1 · 2 BEDROOMS + STUDY</p><h3>Where the ideas begin.</h3><p>The brochure shows 93 m² (1,001 sq ft). Your home uses the mirrored arrangement you confirmed.</p><p>Room dimensions, furnishings and ceiling height in the model are estimates. The original plan has no dimension lines or scale bar.</p><a class="secondary-button" href="'+esc(manifest.floorplan.src)+'" target="_blank" rel="noopener">'+icon('image')+' Open original plan</a></div></div>';return;
+ }
+ const items=galleryTab==='photos'?manifest.photos:videoFrames(),detail=items.find(i=>i.id===galleryDetail);
+ if(detail){
+  content.innerHTML='<button class="text-button" data-action="gallery-back">'+icon('left')+' Back to '+(galleryTab==='photos'?'photos':'video moments')+'</button><div class="photo-detail"><img src="'+esc(detail.src)+'" alt="'+esc(detail.label)+'"><div><p class="eyebrow">'+(galleryTab==='photos'?'SUPPLIED PHOTOGRAPH':'VIDEO FRAME · '+detail.timestampSeconds.toFixed(1)+' SECONDS')+'</p><h3>'+esc(detail.label)+'</h3><p>'+esc(detail.observation)+'</p><p class="body-note subtle">'+(detail.videoLabel?esc(detail.videoLabel)+'<br>':'')+'Source: '+esc(detail.sourcePath||detail.videoSource)+'<br>Dimensions are unmeasured. Camera colors are indicative.</p><a class="secondary-button" href="'+esc(detail.src)+'" target="_blank" rel="noopener">'+icon('image')+' Open image</a></div></div>';
+ }else{
+  content.innerHTML='<p class="gallery-note">'+(galleryTab==='photos'?'The details, textures and everyday moments behind your model.':'28 moments from your 3 supplied walkthroughs. Select a frame for a closer look.')+'</p><div class="gallery-grid">'+items.map(i=>'<button data-reference="'+esc(i.id)+'"><img src="'+esc(i.src)+'" alt="'+esc(i.label)+'" loading="lazy"><strong>'+esc(i.label)+'</strong><small>'+(galleryTab==='photos'?esc(i.sourcePath):i.timestampSeconds.toFixed(1)+'s · '+esc(i.videoSource.split('/').pop()))+'</small></button>').join('')+'</div>';
+ }
+}
+const actions={
+ undo(){if(history.canUndo){history.undo();syncDesign();}},redo(){if(history.canRedo){history.redo();syncDesign();}},
+ references(){openGallery();},plan(){openGallery('plan');},'close-gallery'(){$('#reference-dialog').close();},'gallery-back'(){galleryDetail=null;renderGallery();},
+ import(){$('#import-file').click();},
+ export(){download(JSON.stringify(state,null,2)+'\n','home-studio-design.json','application/json');toast('Design exported. Import it here whenever you are ready.');},
+ screenshot(){if(!viewer){toast('The 3D view is not available yet.');return;}try{download(viewer.screenshot(),'home-studio-'+cameraMode+'.png','image/png');toast('Your view is ready to keep.');}catch{toast('The screenshot could not be created in this browser.');}},
+ 'reset-view'(){setView('dollhouse');},'zoom-in'(){viewer?.zoom(1);},'zoom-out'(){viewer?.zoom(-1);},
+ 'paint-all'(){const color=state.wallColors[currentRoom];commit(d=>{for(const id of Object.keys(d.wallColors))d.wallColors[id]=color;},'One palette, throughout your home.');},
+ 'focus-kitchen'(){selectRoom('kitchen');},
+ 'add-module'(){
+  const total=state.kitchen.modules.reduce((n,m)=>n+m.width,0),width=Math.min(.6,Math.floor((KITCHEN_RUN_LENGTH-total+1e-9)*20)/20);
+  if(width<.3||state.kitchen.modules.length>=8){toast('The kitchen run is full. Reduce a module width to make room.');return;}
+  const id=uniqueId('cab');if(commit(d=>{d.kitchen.modules.push({id,type:'doors',width});})){selectedCabinet=id;renderInspector();}
+ },
+ 'remove-module'(){if(state.kitchen.modules.length<=1){toast('Keep at least one module in the kitchen.');return;}commit(d=>{d.kitchen.modules=d.kitchen.modules.filter(m=>m.id!==selectedCabinet);});},
+ duplicate(){const item=state.furniture.find(i=>i.id===selectedFurniture);if(item)addFurniture(item.type,item);},delete:removeFurniture,
+ restore(){if(commit(()=>createDefaultState(),'The original design is back. Undo to return to your ideas.')){selectedFurniture=null;viewer?.setSelected(null);renderInspector();updateViewCopy();}}
+};
+document.addEventListener('click',event=>{
+ const button=event.target.closest('button,a.brand');if(!button||button.disabled)return;
+ if(button.matches('.brand')){event.preventDefault();actions['reset-view']();return;}
+ const d=button.dataset;
+ if(d.action&&actions[d.action]){actions[d.action]();return;}
+ if(d.room){selectRoom(d.room);return;}if(d.tab){setTab(d.tab);return;}if(d.view){setView(d.view);return;}
+ if(d.paint){commit(s=>{s.wallColors[currentRoom]=d.paint;});return;}if(d.finish){commit(s=>{s.kitchen.color=d.finish;});return;}if(d.style){commit(s=>{s.kitchen.style=d.style;});return;}
+ if(d.module){selectedCabinet=d.module;renderInspector();return;}if(d.variant){editFurniture(i=>{i.variant=d.variant;});return;}
+ if(d.move){moveFurniture(d.move);return;}if(d.rotate){editFurniture(i=>{i.rotation+=Number(d.rotate);});return;}
+ if(d.add){addFurniture(d.add);return;}if(d.reference){showReference(d.reference);return;}
+ if(d.galleryTab){galleryTab=d.galleryTab;galleryDetail=null;renderGallery();}
+});
+document.addEventListener('input',event=>{
+ const input=event.target;
+ if(input.matches('input[type="range"][data-field]'))$('#'+input.id+'-output').textContent=mm(Number(input.value));
+ if(input.matches('input[type="color"]')){const code=input.closest('.custom-color')?.querySelector('code');if(code)code.textContent=input.value.toUpperCase();if(input.id==='wall-color')$('.paint-preview')?.style.setProperty('--paint',input.value);}
+});
+document.addEventListener('change',async event=>{
+ const input=event.target;
+ if(input.id==='import-file'){
+  const file=input.files[0];input.value='';if(!file)return;if(file.size>2*1024*1024){toast('Choose a Home Studio JSON design smaller than 2 MB.');return;}
+  try{const imported=JSON.parse(await file.text());if(commit(()=>imported,'Design imported. Your next idea starts here.')){selectedFurniture=null;viewer?.setSelected(null);renderInspector();updateViewCopy();}}catch{toast('That file is not valid JSON. Choose a design exported by Home Studio.');}return;
+ }
+ if(input.id==='paint-room'||input.id==='furniture-room'){selectRoom(input.value);return;}
+ if(input.id==='selected-furniture'){selectFurniture(input.value,true);return;}
+ if(input.id==='show-labels'){viewer?.setLabels(input.checked);return;}if(input.id==='full-walls'){viewer?.setWalls(input.checked);return;}if(input.id==='show-ceiling'){viewer?.setCeiling(input.checked);return;}
+ if(input.id==='mirror-home'){commit(s=>{s.mirrored=input.checked;});updateViewCopy();return;}
+ if(input.id==='upper-cabinets'){commit(s=>{s.kitchen.upper=input.checked;});return;}
+ if(input.id==='module-type'){commit(s=>{s.kitchen.modules.find(m=>m.id===selectedCabinet).type=input.value;});return;}
+ if(input.id==='replace-furniture'){const entry=getCatalogItem(input.value);if(entry)editFurniture(i=>{i.type=entry.type;i.label=entry.label;i.color=entry.color;});return;}
+ const field=input.dataset.field,value=input.type==='range'?Number(input.value):input.value;
+ if(field==='wall-color')commit(s=>{s.wallColors[currentRoom]=value;});
+ else if(field==='furniture-color')editFurniture(i=>{i.color=value;});
+ else if(field==='module-width')commit(s=>{s.kitchen.modules.find(m=>m.id===selectedCabinet).width=value;});
+ else if(['kitchen-color','upper-color','counter-color','kitchen-depth','kitchen-height'].includes(field)){const key={'kitchen-color':'color','upper-color':'upperColor','counter-color':'counterColor','kitchen-depth':'depth','kitchen-height':'height'}[field];commit(s=>{s.kitchen[key]=value;});}
+});
+document.addEventListener('keydown',event=>{
+ const target=event.target,editing=target instanceof HTMLElement&&(target.matches('input,select,textarea,button')||target.isContentEditable);
+ if(editing||$('#reference-dialog').open)return;
+ const key=event.key.toLowerCase();
+ if((event.ctrlKey||event.metaKey)&&!event.altKey){if(key==='z'){event.preventDefault();actions[event.shiftKey?'redo':'undo']();}else if(key==='y'){event.preventDefault();actions.redo();}return;}
+ if(cameraMode==='walk'||!selectedFurniture||event.altKey)return;
+ const direction={arrowup:'up',arrowdown:'down',arrowleft:'left',arrowright:'right'}[key];
+ if(direction){event.preventDefault();moveFurniture(direction);}else if(key==='r'){event.preventDefault();editFurniture(i=>{i.rotation+=event.shiftKey?-45:45;});}else if(key==='delete'){event.preventDefault();removeFurniture();}else if(key==='escape')selectFurniture(null);
+});
+$('#reference-dialog').addEventListener('click',event=>{if(event.target!==event.currentTarget)return;const r=event.currentTarget.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)event.currentTarget.close();});
+document.querySelectorAll('[data-walk]').forEach(button=>{
+ button.addEventListener('pointerdown',event=>{event.preventDefault();button.setPointerCapture(event.pointerId);viewer?.setWalkInput(button.dataset.walk,true);});
+ for(const event of ['pointerup','pointercancel','lostpointercapture'])button.addEventListener(event,()=>viewer?.setWalkInput(button.dataset.walk,false));
+});
+syncDesign();
+try{
+ viewer=createViewer($('#scene'),{
+  onSelect(kind,id){if(kind==='furniture')selectFurniture(id);else if(kind==='cabinet'){selectedCabinet=id;selectRoom('kitchen',false);setTab('kitchen');}else if(kind==='kitchen'){selectRoom('kitchen',false);setTab('kitchen');}else if(kind==='room'&&roomById(id)?.walkable){selectRoom(id,false);setTab('walls');}},
+  onMove(id,x,z){selectedFurniture=id;if(commit(s=>{const i=s.furniture.find(i=>i.id===id);if(i){i.x=round(x);i.z=round(z);}}))selectFurniture(id);}
+ });
+ viewer.setState(state);$('#loading').remove();
+}catch(error){const loading=$('#loading');loading.innerHTML=icon('cube')+'<strong>The 3D view could not start.</strong><span>Try reloading in a browser with WebGL enabled. You can still edit and export your design.</span>';loading.setAttribute('role','alert');console.error('Home Studio viewer initialization failed:',error);}
+fetch('./references/manifest.json').then(response=>{if(!response.ok)throw new Error('Reference library unavailable.');return response.json();}).then(data=>{if(!Array.isArray(data.photos)||!Array.isArray(data.videos)||!data.floorplan)throw new Error('Invalid reference library.');manifest=data;renderInspector();if($('#reference-dialog').open)renderGallery();}).catch(()=>{manifestError=true;if($('#reference-dialog').open)renderGallery();});
+if(recoveryMessage)toast(recoveryMessage);
+

@@ -1,0 +1,802 @@
+{
+  "schemaVersion": 1,
+  "title": "Supplied home references",
+  "reviewedDate": "2026-11-17",
+  "basis": {
+    "unitType": "Type C1: 2-bedroom + study",
+    "advertisedAreaSqm": 93,
+    "advertisedAreaSqft": 1001,
+    "scaleStatus": "No dimensions or scale bar; all model dimensions are provisional.",
+    "orientationStatus": "Photos and videos strongly suggest the mirror-image arrangement noted by the brochure; absolute orientation is unconfirmed.",
+    "measurementStatus": "Visual inspection only; no photogrammetry or dimension measurement.",
+    "sourcePhotoCount": 10,
+    "sourceVideoCount": 3,
+    "extractedFrameCount": 28
+  },
+  "floorplan": {
+    "id": "floorplan",
+    "kind": "floorplan",
+    "sourcePath": "floorplan-original.png",
+    "src": "./references/floorplan-original.png",
+    "label": "Original Type C1 floorplan",
+    "sourceSize": {
+      "width": 766,
+      "height": 918
+    },
+    "rooms": [
+      "living",
+      "dining",
+      "entrance",
+      "kitchen",
+      "yard",
+      "study",
+      "bedroom-2",
+      "bath-2",
+      "hallway",
+      "master-bedroom",
+      "master-bath",
+      "shelter",
+      "ac-ledge",
+      "planter"
+    ],
+    "observation": "Brochure plan with 93 sq m label and note listing mirror-image units; no room dimensions."
+  },
+  "rooms": [
+    {
+      "id": "living",
+      "label": "Living",
+      "evidenceLevel": "observed",
+      "evidenceIds": [
+        "living",
+        "living-2",
+        "IMG_3023-02"
+      ]
+    },
+    {
+      "id": "dining",
+      "label": "Dining",
+      "evidenceLevel": "observed",
+      "evidenceIds": [
+        "living",
+        "living-2",
+        "IMG_3023-06"
+      ]
+    },
+    {
+      "id": "entrance",
+      "label": "Entrance",
+      "evidenceLevel": "observed",
+      "evidenceIds": [
+        "entrace",
+        "IMG_3023-00"
+      ]
+    },
+    {
+      "id": "kitchen",
+      "label": "Kitchen",
+      "evidenceLevel": "observed",
+      "evidenceIds": [
+        "current-kitchen",
+        "main-kitchen",
+        "sink",
+        "stove",
+        "kitchen-extension",
+        "IMG_3028-00"
+      ]
+    },
+    {
+      "id": "yard",
+      "label": "Yard / laundry",
+      "evidenceLevel": "observed",
+      "evidenceIds": [
+        "inner-kitchen",
+        "IMG_3023-05",
+        "IMG_3028-02"
+      ]
+    },
+    {
+      "id": "study",
+      "label": "Study",
+      "evidenceLevel": "observed",
+      "evidenceIds": [
+        "study",
+        "IMG_3026-07"
+      ]
+    },
+    {
+      "id": "bedroom-2",
+      "label": "Bedroom 2",
+      "evidenceLevel": "identity-inferred",
+      "evidenceIds": [
+        "IMG_3026-03",
+        "IMG_3026-detail-14"
+      ]
+    },
+    {
+      "id": "bath-2",
+      "label": "Bath 2",
+      "evidenceLevel": "identity-inferred",
+      "evidenceIds": [
+        "IMG_3026-01",
+        "IMG_3026-02",
+        "IMG_3026-detail-10"
+      ]
+    },
+    {
+      "id": "hallway",
+      "label": "Private corridor",
+      "evidenceLevel": "observed",
+      "evidenceIds": [
+        "IMG_3023-07",
+        "IMG_3026-00"
+      ]
+    },
+    {
+      "id": "master-bedroom",
+      "label": "Master bedroom",
+      "evidenceLevel": "plan-and-doorway-glimpse",
+      "evidenceIds": [
+        "floorplan",
+        "IMG_3023-07"
+      ]
+    },
+    {
+      "id": "master-bath",
+      "label": "Master bath",
+      "evidenceLevel": "plan-only",
+      "evidenceIds": [
+        "floorplan"
+      ]
+    },
+    {
+      "id": "shelter",
+      "label": "Household shelter",
+      "evidenceLevel": "plan-only",
+      "evidenceIds": [
+        "floorplan"
+      ]
+    },
+    {
+      "id": "ac-ledge",
+      "label": "AC ledge",
+      "evidenceLevel": "plan-only",
+      "evidenceIds": [
+        "floorplan"
+      ]
+    },
+    {
+      "id": "planter",
+      "label": "Planter",
+      "evidenceLevel": "plan-only",
+      "evidenceIds": [
+        "floorplan"
+      ]
+    }
+  ],
+  "photos": [
+    {
+      "id": "current-kitchen",
+      "kind": "photo",
+      "label": "Kitchen from living",
+      "sourcePath": "current-kitchen.jpg",
+      "src": "./references/photos/current-kitchen.jpg",
+      "rooms": [
+        "kitchen"
+      ],
+      "sourceSize": {
+        "width": 1536,
+        "height": 2048
+      },
+      "observation": "Long single working run with orange lower fronts, white top and upper cupboards; yard at far end.",
+      "measurementStatus": "unmeasured"
+    },
+    {
+      "id": "entrace",
+      "kind": "photo",
+      "label": "Entrance passage",
+      "sourcePath": "entrace.jpg",
+      "src": "./references/photos/entrace.jpg",
+      "rooms": [
+        "entrance",
+        "kitchen"
+      ],
+      "sourceSize": {
+        "width": 1536,
+        "height": 2048
+      },
+      "observation": "Timber main door, light walls, narrow passage and timber storage alongside the kitchen extension.",
+      "measurementStatus": "unmeasured"
+    },
+    {
+      "id": "kitchen-extension",
+      "kind": "photo",
+      "label": "Kitchen extension",
+      "sourcePath": "kitchen-extension.jpg",
+      "src": "./references/photos/kitchen-extension.jpg",
+      "rooms": [
+        "kitchen"
+      ],
+      "sourceSize": {
+        "width": 1280,
+        "height": 960
+      },
+      "observation": "Orange drawer stack, white under-counter appliance, white top and raised timber shelf.",
+      "measurementStatus": "unmeasured"
+    },
+    {
+      "id": "living-2",
+      "kind": "photo",
+      "label": "Dining toward living",
+      "sourcePath": "living-2.jpg",
+      "src": "./references/photos/living-2.jpg",
+      "rooms": [
+        "living",
+        "dining"
+      ],
+      "sourceSize": {
+        "width": 1536,
+        "height": 2048
+      },
+      "observation": "Glass dining table with dark timber chairs behind grey sofa; TV opposite; cream tiles and broad blinds.",
+      "measurementStatus": "unmeasured"
+    },
+    {
+      "id": "living",
+      "kind": "photo",
+      "label": "Living and dining",
+      "sourcePath": "living.jpg",
+      "src": "./references/photos/living.jpg",
+      "rooms": [
+        "living",
+        "dining"
+      ],
+      "sourceSize": {
+        "width": 1536,
+        "height": 2048
+      },
+      "observation": "Grey reclining sofa, dark coffee table and TV console, dining behind sofa, light walls and cream floor.",
+      "measurementStatus": "unmeasured"
+    },
+    {
+      "id": "main-kitchen",
+      "kind": "photo",
+      "label": "Cooking and sink run",
+      "sourcePath": "main-kitchen.jpg",
+      "src": "./references/photos/main-kitchen.jpg",
+      "rooms": [
+        "kitchen"
+      ],
+      "sourceSize": {
+        "width": 1280,
+        "height": 960
+      },
+      "observation": "Orange lower fronts; stainless oven below gas hob; double sink; white top and copper backsplash.",
+      "measurementStatus": "unmeasured"
+    },
+    {
+      "id": "sink",
+      "kind": "photo",
+      "label": "Double-bowl sink",
+      "sourcePath": "sink.jpg",
+      "src": "./references/photos/sink.jpg",
+      "rooms": [
+        "kitchen"
+      ],
+      "sourceSize": {
+        "width": 1280,
+        "height": 960
+      },
+      "observation": "Two stainless inset bowls and chrome tap in a white countertop.",
+      "measurementStatus": "unmeasured"
+    },
+    {
+      "id": "stove",
+      "kind": "photo",
+      "label": "Gas hob detail",
+      "sourcePath": "stove.jpg",
+      "src": "./references/photos/stove.jpg",
+      "rooms": [
+        "kitchen"
+      ],
+      "sourceSize": {
+        "width": 1280,
+        "height": 960
+      },
+      "observation": "Stainless gas hob with black supports and four controls; short counter span between hob and sink.",
+      "measurementStatus": "unmeasured"
+    },
+    {
+      "id": "study",
+      "kind": "photo",
+      "label": "Study",
+      "sourcePath": "study.jpg",
+      "src": "./references/photos/study.jpg",
+      "rooms": [
+        "study"
+      ],
+      "sourceSize": {
+        "width": 1536,
+        "height": 2048
+      },
+      "observation": "Timber and glass display cabinet, timber desk, black mesh chair, warm parquet and window blind.",
+      "measurementStatus": "unmeasured"
+    },
+    {
+      "id": "inner-kitchen",
+      "kind": "photo",
+      "label": "Yard and laundry",
+      "sourcePath": "inner-kitchen.jpeg",
+      "src": "./references/photos/inner-kitchen.jpeg",
+      "rooms": [
+        "yard",
+        "kitchen"
+      ],
+      "sourceSize": {
+        "width": 1200,
+        "height": 1600
+      },
+      "observation": "Tall orange cabinet, stacked white laundry, white refrigerator, window and ceiling drying rack.",
+      "measurementStatus": "unmeasured"
+    }
+  ],
+  "videos": [
+    {
+      "id": "IMG_3023",
+      "kind": "video",
+      "label": "Entry, living and kitchen walkthrough",
+      "sourcePath": "videos/IMG_3023.MOV",
+      "durationSeconds": 27.35,
+      "frameRate": "60000/1001",
+      "encodedSize": {
+        "width": 3840,
+        "height": 2160
+      },
+      "displayRotationDegrees": -90,
+      "originalCopiedToPublic": false,
+      "poster": "./references/video-frames/IMG_3023-00-000.5s.jpg",
+      "contactSheet": "./references/video-frames/IMG_3023-contact-sheet.jpg",
+      "contactSheetOrderSeconds": [
+        0.5,
+        4,
+        8,
+        12,
+        16,
+        20,
+        24,
+        27
+      ],
+      "frames": [
+        {
+          "id": "IMG_3023-00",
+          "kind": "video-frame",
+          "src": "./references/video-frames/IMG_3023-00-000.5s.jpg",
+          "timestampSeconds": 0.5,
+          "label": "Entrance storage",
+          "rooms": [
+            "entrance"
+          ],
+          "observation": "Open entry with long slatted timber cabinet and view toward living.",
+          "measurementStatus": "unmeasured"
+        },
+        {
+          "id": "IMG_3023-01",
+          "kind": "video-frame",
+          "src": "./references/video-frames/IMG_3023-01-004.0s.jpg",
+          "timestampSeconds": 4,
+          "label": "Entrance wall",
+          "rooms": [
+            "entrance"
+          ],
+          "observation": "Pale wall and storage beside entry passage.",
+          "measurementStatus": "unmeasured"
+        },
+        {
+          "id": "IMG_3023-02",
+          "kind": "video-frame",
+          "src": "./references/video-frames/IMG_3023-02-008.0s.jpg",
+          "timestampSeconds": 8,
+          "label": "Living and dining",
+          "rooms": [
+            "living",
+            "dining"
+          ],
+          "observation": "Grey sofa, dining table, broad blinds and cube pendants.",
+          "measurementStatus": "unmeasured"
+        },
+        {
+          "id": "IMG_3023-03",
+          "kind": "video-frame",
+          "src": "./references/video-frames/IMG_3023-03-012.0s.jpg",
+          "timestampSeconds": 12,
+          "label": "Kitchen entry",
+          "rooms": [
+            "kitchen"
+          ],
+          "observation": "Long narrow aisle and white working top; yard at far end.",
+          "measurementStatus": "unmeasured"
+        },
+        {
+          "id": "IMG_3023-04",
+          "kind": "video-frame",
+          "src": "./references/video-frames/IMG_3023-04-016.0s.jpg",
+          "timestampSeconds": 16,
+          "label": "Cooking run and laundry",
+          "rooms": [
+            "kitchen",
+            "yard"
+          ],
+          "observation": "Hob and oven, stacked laundry and tall fridge.",
+          "measurementStatus": "unmeasured"
+        },
+        {
+          "id": "IMG_3023-05",
+          "kind": "video-frame",
+          "src": "./references/video-frames/IMG_3023-05-020.0s.jpg",
+          "timestampSeconds": 20,
+          "label": "Yard window",
+          "rooms": [
+            "yard"
+          ],
+          "observation": "Window, ceiling drying rack and tall orange cupboard.",
+          "measurementStatus": "unmeasured"
+        },
+        {
+          "id": "IMG_3023-06",
+          "kind": "video-frame",
+          "src": "./references/video-frames/IMG_3023-06-024.0s.jpg",
+          "timestampSeconds": 24,
+          "label": "Dining beside living",
+          "rooms": [
+            "living",
+            "dining"
+          ],
+          "observation": "Glass dining table and chairs behind the sofa.",
+          "measurementStatus": "unmeasured"
+        },
+        {
+          "id": "IMG_3023-07",
+          "kind": "video-frame",
+          "src": "./references/video-frames/IMG_3023-07-027.0s.jpg",
+          "timestampSeconds": 27,
+          "label": "Private corridor",
+          "rooms": [
+            "hallway",
+            "bedroom-2",
+            "bath-2",
+            "master-bedroom"
+          ],
+          "observation": "Bedroom camera-left, bathroom camera-right and white wardrobe at corridor end.",
+          "measurementStatus": "unmeasured"
+        }
+      ]
+    },
+    {
+      "id": "IMG_3026",
+      "kind": "video",
+      "label": "Bathroom, bedroom and study walkthrough",
+      "sourcePath": "videos/IMG_3026.MOV",
+      "durationSeconds": 28.806667,
+      "frameRate": "30000/1001",
+      "encodedSize": {
+        "width": 3840,
+        "height": 2160
+      },
+      "displayRotationDegrees": -90,
+      "originalCopiedToPublic": false,
+      "poster": "./references/video-frames/IMG_3026-07-028.0s.jpg",
+      "contactSheet": "./references/video-frames/IMG_3026-contact-sheet.jpg",
+      "contactSheetOrderSeconds": [
+        0.5,
+        4,
+        8,
+        12,
+        16,
+        20,
+        24,
+        28
+      ],
+      "frames": [
+        {
+          "id": "IMG_3026-00",
+          "kind": "video-frame",
+          "src": "./references/video-frames/IMG_3026-00-000.5s.jpg",
+          "timestampSeconds": 0.5,
+          "label": "Private corridor",
+          "rooms": [
+            "hallway"
+          ],
+          "observation": "Timber door frames and runner with glimpse of white wardrobe.",
+          "measurementStatus": "unmeasured"
+        },
+        {
+          "id": "IMG_3026-01",
+          "kind": "video-frame",
+          "src": "./references/video-frames/IMG_3026-01-004.0s.jpg",
+          "timestampSeconds": 4,
+          "label": "Common bathroom",
+          "rooms": [
+            "bath-2"
+          ],
+          "observation": "White vanity and toilet with shower at far end; dark floor.",
+          "measurementStatus": "unmeasured"
+        },
+        {
+          "id": "IMG_3026-02",
+          "kind": "video-frame",
+          "src": "./references/video-frames/IMG_3026-02-008.0s.jpg",
+          "timestampSeconds": 8,
+          "label": "Common shower",
+          "rooms": [
+            "bath-2"
+          ],
+          "observation": "Clear screen, chrome shower, dark tiles and narrow frosted window.",
+          "measurementStatus": "unmeasured"
+        },
+        {
+          "id": "IMG_3026-03",
+          "kind": "video-frame",
+          "src": "./references/video-frames/IMG_3026-03-012.0s.jpg",
+          "timestampSeconds": 12,
+          "label": "Bedroom 2 doorway",
+          "rooms": [
+            "bedroom-2"
+          ],
+          "observation": "Timber bed, white bedding, warm parquet and broad blinds; identity inferred.",
+          "measurementStatus": "unmeasured"
+        },
+        {
+          "id": "IMG_3026-04",
+          "kind": "video-frame",
+          "src": "./references/video-frames/IMG_3026-04-016.0s.jpg",
+          "timestampSeconds": 16,
+          "label": "Bedroom toward bathroom",
+          "rooms": [
+            "bedroom-2",
+            "hallway",
+            "bath-2"
+          ],
+          "observation": "View from bedroom across corridor toward bathroom.",
+          "measurementStatus": "unmeasured"
+        },
+        {
+          "id": "IMG_3026-05",
+          "kind": "video-frame",
+          "src": "./references/video-frames/IMG_3026-05-020.0s.jpg",
+          "timestampSeconds": 20,
+          "label": "Study in low light",
+          "rooms": [
+            "study"
+          ],
+          "observation": "Desk and window in very dark image; unsuitable for finish assessment.",
+          "measurementStatus": "unmeasured"
+        },
+        {
+          "id": "IMG_3026-06",
+          "kind": "video-frame",
+          "src": "./references/video-frames/IMG_3026-06-024.0s.jpg",
+          "timestampSeconds": 24,
+          "label": "Study in low light",
+          "rooms": [
+            "study"
+          ],
+          "observation": "Desk, chair and window silhouettes; unsuitable for finish assessment.",
+          "measurementStatus": "unmeasured"
+        },
+        {
+          "id": "IMG_3026-07",
+          "kind": "video-frame",
+          "src": "./references/video-frames/IMG_3026-07-028.0s.jpg",
+          "timestampSeconds": 28,
+          "label": "Study with light on",
+          "rooms": [
+            "study"
+          ],
+          "observation": "Desk, monitor, black chair, display cabinet and parquet match study.jpg.",
+          "measurementStatus": "unmeasured"
+        },
+        {
+          "id": "IMG_3026-detail-02",
+          "kind": "video-frame",
+          "src": "./references/video-frames/IMG_3026-detail-02.jpg",
+          "timestampSeconds": 2,
+          "label": "Common bath doorway",
+          "rooms": [
+            "hallway",
+            "bath-2"
+          ],
+          "observation": "Bathroom on camera-right along corridor; wardrobe glimpse at end.",
+          "contactSheetIncluded": false,
+          "measurementStatus": "unmeasured"
+        },
+        {
+          "id": "IMG_3026-detail-10",
+          "kind": "video-frame",
+          "src": "./references/video-frames/IMG_3026-detail-10.jpg",
+          "timestampSeconds": 10,
+          "label": "Common bath vanity",
+          "rooms": [
+            "bath-2"
+          ],
+          "observation": "White basin, broad mirror and dark wood lower vanity.",
+          "contactSheetIncluded": false,
+          "measurementStatus": "unmeasured"
+        },
+        {
+          "id": "IMG_3026-detail-14",
+          "kind": "video-frame",
+          "src": "./references/video-frames/IMG_3026-detail-14.jpg",
+          "timestampSeconds": 14,
+          "label": "Bedroom 2 bed and side table",
+          "rooms": [
+            "bedroom-2"
+          ],
+          "observation": "Timber bed with white bedding, round white side table, pale rug and grey blinds.",
+          "contactSheetIncluded": false,
+          "measurementStatus": "unmeasured"
+        },
+        {
+          "id": "IMG_3026-detail-17",
+          "kind": "video-frame",
+          "src": "./references/video-frames/IMG_3026-detail-17.jpg",
+          "timestampSeconds": 17,
+          "label": "Bedroom opposite bathroom",
+          "rooms": [
+            "bedroom-2",
+            "hallway",
+            "bath-2"
+          ],
+          "observation": "Bedroom doorway faces common bathroom across corridor.",
+          "contactSheetIncluded": false,
+          "measurementStatus": "unmeasured"
+        },
+        {
+          "id": "IMG_3026-detail-18",
+          "kind": "video-frame",
+          "src": "./references/video-frames/IMG_3026-detail-18.jpg",
+          "timestampSeconds": 18,
+          "label": "Study doorway beside bathroom",
+          "rooms": [
+            "study",
+            "hallway",
+            "bath-2"
+          ],
+          "observation": "Dark study doorway beyond bathroom; master doorway partly visible.",
+          "contactSheetIncluded": false,
+          "measurementStatus": "unmeasured"
+        },
+        {
+          "id": "IMG_3026-detail-26",
+          "kind": "video-frame",
+          "src": "./references/video-frames/IMG_3026-detail-26.jpg",
+          "timestampSeconds": 26,
+          "label": "Study before light turns on",
+          "rooms": [
+            "study"
+          ],
+          "observation": "Dark desk and window view; use 28-second frame for finishes.",
+          "contactSheetIncluded": false,
+          "measurementStatus": "unmeasured"
+        }
+      ]
+    },
+    {
+      "id": "IMG_3028",
+      "kind": "video",
+      "label": "Kitchen walkthrough",
+      "sourcePath": "videos/IMG_3028.MOV",
+      "durationSeconds": 14.51,
+      "frameRate": "60000/1001",
+      "encodedSize": {
+        "width": 3840,
+        "height": 2160
+      },
+      "displayRotationDegrees": -90,
+      "originalCopiedToPublic": false,
+      "poster": "./references/video-frames/IMG_3028-00-000.5s.jpg",
+      "contactSheet": "./references/video-frames/IMG_3028-contact-sheet.jpg",
+      "contactSheetOrderSeconds": [
+        0.5,
+        3,
+        6,
+        9,
+        12,
+        14
+      ],
+      "frames": [
+        {
+          "id": "IMG_3028-00",
+          "kind": "video-frame",
+          "src": "./references/video-frames/IMG_3028-00-000.5s.jpg",
+          "timestampSeconds": 0.5,
+          "label": "Kitchen from living",
+          "rooms": [
+            "kitchen"
+          ],
+          "observation": "Orange lower fronts and white worktop camera-right when facing yard.",
+          "measurementStatus": "unmeasured"
+        },
+        {
+          "id": "IMG_3028-01",
+          "kind": "video-frame",
+          "src": "./references/video-frames/IMG_3028-01-003.0s.jpg",
+          "timestampSeconds": 3,
+          "label": "Kitchen working run",
+          "rooms": [
+            "kitchen"
+          ],
+          "observation": "Orange drawers near living; white under-counter appliance and sink farther in.",
+          "measurementStatus": "unmeasured"
+        },
+        {
+          "id": "IMG_3028-02",
+          "kind": "video-frame",
+          "src": "./references/video-frames/IMG_3028-02-006.0s.jpg",
+          "timestampSeconds": 6,
+          "label": "Laundry and fridge",
+          "rooms": [
+            "yard"
+          ],
+          "observation": "Tall orange cupboard, stacked dryer/washer and white refrigerator.",
+          "measurementStatus": "unmeasured"
+        },
+        {
+          "id": "IMG_3028-03",
+          "kind": "video-frame",
+          "src": "./references/video-frames/IMG_3028-03-009.0s.jpg",
+          "timestampSeconds": 9,
+          "label": "Fridge close view",
+          "rooms": [
+            "yard"
+          ],
+          "observation": "White refrigerator with different door arrangement to still photo.",
+          "measurementStatus": "unmeasured"
+        },
+        {
+          "id": "IMG_3028-04",
+          "kind": "video-frame",
+          "src": "./references/video-frames/IMG_3028-04-012.0s.jpg",
+          "timestampSeconds": 12,
+          "label": "Kitchen upper cabinets",
+          "rooms": [
+            "kitchen",
+            "yard"
+          ],
+          "observation": "White flat-front cupboards near cooking area.",
+          "measurementStatus": "unmeasured"
+        },
+        {
+          "id": "IMG_3028-05",
+          "kind": "video-frame",
+          "src": "./references/video-frames/IMG_3028-05-014.0s.jpg",
+          "timestampSeconds": 14,
+          "label": "Kitchen toward living",
+          "rooms": [
+            "kitchen",
+            "living"
+          ],
+          "observation": "Double sink, white under-counter appliance and orange extension.",
+          "measurementStatus": "unmeasured"
+        }
+      ]
+    }
+  ],
+  "uncertainties": [
+    "No measured room, ceiling, furniture, cabinet or appliance dimensions were supplied.",
+    "Handedness appears mirrored relative to the drawing; unit number and compass direction were not verified.",
+    "Master bedroom and bath lack useful full interior coverage; their modeled furnishings are placeholders.",
+    "Bedroom 2 and bath 2 identities are inferred from corridor adjacency and plan.",
+    "Exact paint and laminate specifications cannot be matched reliably from camera colors.",
+    "White under-counter appliance resembles a dishwasher but its model and exact type are unconfirmed.",
+    "Refrigerator door configuration differs between the photograph and videos.",
+    "IMG_3026 frames at 20–26 s are too dark for finish assessment.",
+    "Concealed services, structural capacity, plumbing routes and relocation feasibility were not established."
+  ],
+  "derivatives": {
+    "photoPreviews": "Longest side limited to 1280 px with macOS sips; originals unchanged.",
+    "videoFrames": "ffmpeg automatic display rotation; one frame at each indexed timestamp; main frames 1280 px wide and details 720 px wide.",
+    "contactSheets": "Read left to right then top to bottom; IMG_3028 has two intentional empty cells.",
+    "audio": "Not transcribed.",
+    "videos": "Original MOV files remain in videos/ and were not duplicated into public/."
+  }
+}
+
