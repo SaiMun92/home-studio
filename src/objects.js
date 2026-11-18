@@ -1,7 +1,13 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { FURNITURE_CATALOG, getCatalogItem } from './catalog.js';
-import { kitchenRun, BUILT_IN_CABINETS } from './layout.js';
+import { kitchenRun, BUILT_IN_CABINETS, WINDOW_LEDGES } from './layout.js';
+import { kitchenMaterial, projectKitchenMaterialUVs } from './material-textures.js';
+import { createVincentDining } from './vincent-dining.js';
+import { createVeronicaCoffee } from './veronica-coffee.js';
+import { createSolangeChair } from './solange-chair.js';
+import { endUpperLayout, UPPER_CABINET_DEPTH, UPPER_DOOR_OFFSET } from './kitchen-end-doors.js';
+import { createOmnidesk, createOfficeChair } from './office-furniture.js';
 
 export { FURNITURE_CATALOG, getCatalogItem };
 
@@ -366,11 +372,16 @@ export function createFurniture(item) {
   switch (type) {
     case 'sofa': sofa(group, p, original); break;
     case 'armchair': armchair(group, p, original); break;
+    case 'solange-chair': createSolangeChair(group, color); break;
     case 'coffee': coffeeTable(group, p, original); break;
+    case 'veronica-coffee': createVeronicaCoffee(group, color); break;
     case 'dining': diningTable(group, p, original); break;
+    case 'vincent-dining': createVincentDining(group, color); break;
     case 'bed': bed(group, p, false, original); break;
     case 'singlebed': bed(group, p, true, original); break;
     case 'desk': desk(group, p); break;
+    case 'omnidesk-classic': createOmnidesk(group, color); break;
+    case 'office-chair': createOfficeChair(group, color); break;
     case 'wardrobe': wardrobe(group, p, original); break;
     case 'console': consoleUnit(group, p, original); break;
     case 'storage': bookshelf(group, p); break;
@@ -420,7 +431,19 @@ function cabinetHandle(parent, width, x, y, z, mat, vertical = false) {
   }
 }
 
-export function createBuiltInCabinets() {
+export function createWindowLedges() {
+  const group = new THREE.Group();
+  group.name = 'Window ledges';
+  for (const ledge of WINDOW_LEDGES) {
+    const object = box(group, ledge.width, ledge.height, ledge.depth, material(ledge.color, {roughness:.5}), ledge.x, ledge.height / 2, ledge.z);
+    object.name = ledge.label;
+    object.userData.roomId = ledge.room;
+    object.userData.fixtureId = ledge.id;
+  }
+  return group;
+}
+
+export function createBuiltInCabinets(yardCabinetColor) {
   const group = new THREE.Group();
   group.name = 'Existing built-in cabinets';
   for (const spec of BUILT_IN_CABINETS) {
@@ -436,10 +459,11 @@ export function createBuiltInCabinets() {
     const depth = sideways ? spec.width : spec.depth;
     const height = spec.height;
     const tall = spec.id === 'yard-tv-cabinet';
+    const finishColor = tall ? (yardCabinetColor ?? spec.color) : spec.color;
     const finish = tall
-      ? new THREE.MeshPhysicalMaterial({color:spec.color,roughness:.23,clearcoat:.7,clearcoatRoughness:.18})
-      : material(spec.color, {roughness:.65});
-    const carcass = material(shade(spec.color, -.06));
+      ? new THREE.MeshPhysicalMaterial({color:finishColor,roughness:.23,clearcoat:.7,clearcoatRoughness:.18})
+      : material(finishColor, {roughness:.65});
+    const carcass = material(shade(finishColor, -.06));
     const top = tall ? finish : material('#bbaa8e', {roughness:.53});
     box(cabinet, width-.03, .08, depth-.07, material('#514637'), 0, .04, -.015);
     box(cabinet, width, height-.11, depth-.045, carcass, 0, .08+(height-.11)/2, -.0225);
@@ -473,6 +497,10 @@ function sink(parent, width, depth, height, counterMat, steel, dark) {
     box(parent, (width - holeWidth) / 2, .036, slabDepth, counterMat, side * (width + holeWidth) / 4, slabY, .008, .005);
     box(parent, holeWidth, .036, (slabDepth - holeDepth) / 2, counterMat, 0, slabY, .008 + side * (slabDepth + holeDepth) / 4, .004);
   }
+  const fixture = new THREE.Group();
+  fixture.name = 'Sink basin and tap';
+  parent.add(fixture);
+  parent = fixture;
   const bottomY = height - .143;
   box(parent, holeWidth, .014, holeDepth, steel, 0, bottomY, .008, .015);
   for (const side of [-1, 1]) {
@@ -484,12 +512,19 @@ function sink(parent, width, depth, height, counterMat, steel, dark) {
   cylinder(parent, .027, .027, .003, dark, 0, bottomY + .009, .008);
   ring(parent, .027, .003, steel, 0, bottomY + .011, .008);
   const faucetZ = -depth / 2 + .054;
-  cylinder(parent, .025, .025, .045, steel, .09, height + .02, faucetZ);
-  tube(parent, [[.09, height + .02, faucetZ], [.09, height + .23, faucetZ], [.09, height + .28, faucetZ + .08], [.09, height + .25, faucetZ + .155], [.09, height + .19, faucetZ + .155]], .010, steel);
-  rod(parent, [.11, height + .045, faucetZ], [.15, height + .09, faucetZ], .006, steel);
+  const tap = new THREE.Group();
+  tap.name = 'Sink tap';
+  parent.add(tap);
+  cylinder(tap, .025, .025, .045, steel, 0, height + .02, faucetZ).name = 'Sink tap base';
+  tube(tap, [[0, height + .02, faucetZ], [0, height + .23, faucetZ], [0, height + .28, faucetZ + .08], [0, height + .25, faucetZ + .155], [0, height + .19, faucetZ + .155]], .010, steel).name = 'Sink tap gooseneck';
+  rod(tap, [.02, height + .045, faucetZ], [.06, height + .09, faucetZ], .006, steel).name = 'Sink tap lever';
 }
 
 function hob(parent, width, depth, height, steel, dark) {
+  const fixture = new THREE.Group();
+  fixture.name = 'Hob';
+  parent.add(fixture);
+  parent = fixture;
   const hobWidth = Math.min(.55, width - .035);
   const hobDepth = Math.min(.49, depth - .08);
   box(parent, hobWidth, .014, hobDepth, dark, 0, height + .007, 0, .016);
@@ -508,23 +543,100 @@ function hob(parent, width, depth, height, steel, dark) {
   for (let i = 0; i < 4; i++) cylinder(parent, .012, .012, .015, steel, (i - 1.5) * .06, height + .021, hobDepth / 2 - .031);
 }
 
-export function createKitchen(kitchen) {
+function kitchenTaskLight(light, parent, width, worktopHeight, sourceY, sourceZ, name, targetZ = sourceZ - .1) {
+  const drop = Math.max(.35, sourceY - worktopHeight - .01);
+  const angle = Math.min(Math.PI / 3, Math.atan2(width * .65, drop) + .18);
+  // Aim across the worktop from the selected fixture position, letting the
+  // soft beam also wash the backsplash. This remains an illustrative
+  // lighting preview, not a specification for real-world fixture output.
+  light.color.set('#ffdbb5');
+  light.intensity = Math.min(9.6, Math.max(2.4, width * 8));
+  light.distance = 1.6;
+  light.angle = angle;
+  light.penumbra = .65;
+  light.decay = 2;
+  light.name = name;
+  light.userData.kitchenTaskLight = true;
+  light.castShadow = false;
+  light.position.set(0, sourceY, sourceZ);
+  light.target.name = 'Kitchen task-light target';
+  light.target.position.set(0, worktopHeight + .01, targetZ);
+  // Targets must share the cabinet transform, including the home's mirror.
+  parent.add(light, light.target);
+}
+
+function endUpperCabinet(parent, plan, upperZ, upper, upperInset, handles, style, open) {
+  const {width} = plan;
+  const height = .75, depth = UPPER_CABINET_DEPTH, thickness = .018, bottom = 1.55;
+  const frontZ = upperZ + depth / 2 + UPPER_DOOR_OFFSET;
+  const shell = new THREE.Group();shell.name = 'Fridge-side upper cabinet';parent.add(shell);
+  for (const side of [-1, 1]) {
+    box(shell, thickness, height, depth, upper, side * (width - thickness) / 2, bottom + height / 2, upperZ);
+    box(shell, width - thickness * 2, thickness, depth, upper, 0, bottom + (side < 0 ? thickness / 2 : height - thickness / 2), upperZ);
+  }
+  box(shell, width - thickness * 2, height - thickness * 2, thickness, upper, 0, bottom + height / 2, upperZ - (depth - thickness) / 2);
+  const shelf = box(shell, width - thickness * 2, thickness, depth - thickness - .02, upper, 0, bottom + height / 2, upperZ + thickness / 2 - .01);
+  shelf.name = 'End upper cabinet shelf';
+  // Small end fillers leave space for handles when a door is at 90 degrees.
+  for (const side of [-1, 1]) box(shell, .04, height - .008, .021, upper, side * (width / 2 - .02), bottom + height / 2, frontZ, .003);
+  for (let i = 0; i < plan.count; i++) {
+    const left = -width / 2 + plan.hingeInset + i * (plan.leafWidth + plan.gap);
+    const rightHinge = i % 2 === 1 || i === plan.count - 1;
+    const direction = rightHinge ? -1 : 1;
+    const hinge = new THREE.Group();hinge.name = 'Short end-upper door';
+    hinge.position.set(left + (rightHinge ? plan.leafWidth : 0), 0, frontZ);
+    hinge.userData.endUpperDoor = true;
+    hinge.userData.leafWidth = plan.leafWidth;
+    hinge.userData.openDirection = -direction;
+    hinge.rotation.y = open ? -direction * Math.PI / 2 : 0;
+    shell.add(hinge);
+    const x = direction * plan.leafWidth / 2;
+    cabinetFront(hinge, plan.leafWidth, height - .008, x, bottom + height / 2, 0, upper, style, upperInset);
+    cabinetHandle(hinge, plan.leafWidth, x, 1.595, 0, handles);
+  }
+  return shell;
+}
+
+export function createKitchen(kitchen, taskLightPool = []) {
+  // The viewer retains a bounded set of IDs for Three.js's light-uniform
+  // cache. Detach targets too, so unused lights cannot retain old cabinets.
+  for (const light of taskLightPool) {
+    light.removeFromParent();
+    light.target.removeFromParent();
+  }
+  let taskLightIndex = 0;
+  const addTaskLight = (parent, width, height, sourceY, sourceZ, name, targetZ) => {
+    const light = taskLightPool[taskLightIndex] ?? (taskLightPool[taskLightIndex] = new THREE.SpotLight());
+    taskLightIndex++;
+    kitchenTaskLight(light, parent, width, height, sourceY, sourceZ, name, targetZ);
+  };
   const group = new THREE.Group();
   group.name = 'Kitchen cabinetry';
   const depth = Number(kitchen.depth) || .6;
   const height = Number(kitchen.height) || .86;
   const finishColor = kitchen.color || '#c76530';
   const upperColor = kitchen.upperColor || '#f0eee7';
-  const finish = material(finishColor, { roughness: .52 });
-  const inset = material(shade(finishColor, -.055), { roughness: .6 });
-  const upper = material(upperColor, { roughness: .58 });
-  const upperInset = material(shade(upperColor, -.035));
-  const counter = material(kitchen.counterColor || '#ece8df', { roughness: .37 });
-  const carcass = material(shade(finishColor, -.075));
+  const finish = kitchenMaterial(kitchen.lowerMaterial,'laminate',finishColor,{roughness:.52});
+  const inset = kitchenMaterial(kitchen.lowerMaterial,'laminate',shade(finishColor,-.055),{roughness:.6});
+  const upper = kitchenMaterial(kitchen.upperMaterial,'laminate',upperColor,{roughness:.58});
+  const upperInset = kitchenMaterial(kitchen.upperMaterial,'laminate',shade(upperColor,-.035));
+  const counter = kitchenMaterial(kitchen.counterMaterial,'countertop',kitchen.counterColor||'#ece8df',{roughness:.37});
+  const carcass = kitchenMaterial(kitchen.lowerMaterial,'laminate',shade(finishColor,-.075));
   const dark = material('#292d2c', { roughness: .46 });
   const steel = material('#afb4b1', { metalness: .78, roughness: .25 });
   const handles = material('#a99b79', { metalness: .74, roughness: .3 });
   const style = kitchen.style || 'flat';
+  const taskLighting = kitchen.taskLighting === true;
+  const addUpperStrip = (parent, width, upperZ, upperDepth) => {
+    // Wall-side placement remains fixed when the upper bays are redivided.
+    const stripZ = upperZ - upperDepth / 2 + .055;
+    const stripMaterial = taskLighting
+      ? material('#fff5e7', { emissive: '#ffdbb5', emissiveIntensity: 1.1 })
+      : material('#ffefd1', { emissive: '#ffe2a9', emissiveIntensity: kitchen.taskLighting === false ? 0 : .7 });
+    const strip = box(parent, width - .04, .008, .014, stripMaterial, 0, 1.544, stripZ, .002);
+    strip.name = 'Under-cabinet task-light diffuser';
+    if (taskLighting) addTaskLight(parent, width, height, 1.533, stripZ, 'Under-cabinet task illumination', stripZ + .14);
+  };
   const run = kitchenRun({...kitchen,depth,modules:kitchen.modules || []});
   // Close the remaining span without rewriting saved module widths or IDs.
   // Adding/widening modules replaces this fitted end section automatically.
@@ -539,6 +651,7 @@ export function createKitchen(kitchen) {
       modules.unshift({type:'doors',width:run.frontExtensionLength,fittedFront:true});
     }
   }
+  const endUpper = endUpperLayout(kitchen, modules, run);
   let cursor = run.start;
   for (const module of modules) {
     const width = Number(module.width) || .6;
@@ -629,32 +742,52 @@ export function createKitchen(kitchen) {
       }
       if (module.type === 'sink') sink(cabinet, width, depth, height, counter, steel, dark);
     }
-    // The upper boundary follows a module edge, including edited widths.
+    // Only add uppers to whole bays backed by the fixed partition.
     if (kitchen.upper !== false && moduleStart >= run.upperStart - 1e-9) {
-      const upperHeight = .75, upperDepth = .34;
+      const upperHeight = .75, upperDepth = UPPER_CABINET_DEPTH;
       const upperZ = -depth / 2 + upperDepth / 2;
       if (module.type === 'hob') {
         box(cabinet, width - .025, .075, .46, steel, 0, 1.67, -depth / 2 + .23, .009);
         box(cabinet, width - .085, .012, .35, dark, 0, 1.627, -depth / 2 + .24, .004);
         box(cabinet, width * .46, .60, .23, steel, 0, 1.995, -depth / 2 + .125, .01);
         for (const x of [-width * .30, width * .30]) {
-          const light = material('#fff2cc', { emissive: '#ffe5b1', emissiveIntensity: .9 });
-          cylinder(cabinet, .022, .022, .009, light, x, 1.625, -.015);
+          const lampMaterial = taskLighting
+            ? material('#fff5e7', { emissive: '#ffdbb5', emissiveIntensity: 1.1 })
+            : material('#fff2cc', { emissive: '#ffe5b1', emissiveIntensity: kitchen.taskLighting === false ? 0 : .9 });
+          const lamp = cylinder(cabinet, .022, .022, .009, lampMaterial, x, 1.625, -.015);
+          lamp.name = 'Hood task-light diffuser';
         }
+        if (taskLighting) addTaskLight(cabinet, width, height, 1.614, -.015, 'Hood task illumination');
       } else {
-        box(cabinet, width, upperHeight, upperDepth, upper, 0, 1.55 + upperHeight / 2, upperZ, .004);
-        if(narrowFill) continue;
-        const count = width > .68 ? 2 : 1;
-        const doorWidth = width / count;
-        for (let i = 0; i < count; i++) {
-          const x = -width / 2 + doorWidth * (i + .5);
-          const z = upperZ + upperDepth / 2 + .012;
-          cabinetFront(cabinet, doorWidth - .009, upperHeight - .008, x, 1.925, z, upper, style, upperInset);
-          cabinetHandle(cabinet, doorWidth, x, 1.595, z + .015, handles);
+        const upperWidth = endUpper ? Math.max(0, Math.min(cursor, endUpper.start) - moduleStart) : width;
+        if (upperWidth < .000001) continue;
+        let upperBay = cabinet;
+        if (Math.abs(upperWidth - width) > 1e-9) {
+          upperBay = new THREE.Group();upperBay.name = 'Upper bay before end cabinet';
+          upperBay.position.x = (upperWidth - width) / 2;cabinet.add(upperBay);
         }
-        box(cabinet, width - .04, .008, .014, material('#ffefd1', { emissive: '#ffe2a9', emissiveIntensity: .7 }), 0, 1.544, upperZ + upperDepth / 2 - .028, .002);
+        box(upperBay, upperWidth, upperHeight, upperDepth, upper, 0, 1.55 + upperHeight / 2, upperZ, .004);
+        if (narrowFill || upperWidth < .15) continue;
+        const count = upperWidth > .68 ? 2 : 1;
+        const doorWidth = upperWidth / count;
+        for (let i = 0; i < count; i++) {
+          const x = -upperWidth / 2 + doorWidth * (i + .5);
+          const z = upperZ + upperDepth / 2 + UPPER_DOOR_OFFSET;
+          cabinetFront(upperBay, doorWidth - .009, upperHeight - .008, x, 1.925, z, upper, style, upperInset);
+          cabinetHandle(upperBay, doorWidth, x, 1.595, z + .015, handles);
+        }
+        addUpperStrip(upperBay, upperWidth, upperZ, upperDepth);
       }
     }
   }
+  if (endUpper) {
+    const cabinet = new THREE.Group();cabinet.name = 'Fitted upper end section';cabinet.userData.kitchenInfill = true;
+    cabinet.position.set(run.back - depth / 2, 0, (endUpper.start + endUpper.end) / 2);
+    cabinet.rotation.y = -Math.PI / 2;group.add(cabinet);
+    const upperDepth = UPPER_CABINET_DEPTH, upperZ = -depth / 2 + upperDepth / 2;
+    endUpperCabinet(cabinet, endUpper, upperZ, upper, upperInset, handles, style, kitchen.endUpperDoors === 'short-open');
+    addUpperStrip(cabinet, endUpper.width, upperZ, upperDepth);
+  }
+  projectKitchenMaterialUVs(group);
   return group;
 }

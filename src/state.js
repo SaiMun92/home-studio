@@ -1,14 +1,19 @@
 import { FURNITURE_CATALOG } from './catalog.js';
-import { ROOMS, KITCHEN_RUN_LENGTH } from './layout.js';
+import { ROOMS, KITCHEN_RUN_LENGTH, BUILT_IN_CABINETS } from './layout.js';
+import { KITCHEN_MATERIALS, KITCHEN_MATERIAL_FIELDS } from './kitchen-materials.js';
+import { KITCHEN_STORAGE, KITCHEN_STORAGE_TYPES } from './kitchen-storage.js';
 
 const PAINTABLE_ROOMS = ROOMS.filter(room => room.walkable);
 const ROOM_IDS = PAINTABLE_ROOMS.map(room => room.id);
 const CABINET_TYPES = new Set(['doors', 'drawers', 'sink', 'hob', 'dishwasher', 'pantry']);
 const CABINET_STYLES = new Set(['flat', 'shaker', 'slatted']);
 const FURNITURE_VARIANTS = new Set(['classic', 'modern']);
+const YARD_LAUNDRY_LAYOUTS = new Set(['stacked', 'combo-tower']);
 const CATALOG = new Map(FURNITURE_CATALOG.map(item => [item.type, item]));
 const COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
 const MAX_HISTORY = 100;
+const ORIGINAL_YARD_COLOR = BUILT_IN_CABINETS.find(cabinet => cabinet.id === 'yard-tv-cabinet').color;
+export const ORIGINAL_BACKSPLASH_COLOR = '#ab6844';
 
 export function createDefaultState() {
   const placements = [
@@ -26,11 +31,13 @@ export function createDefaultState() {
   return {
     version: 1,
     mirrored: true,
+    yardCabinetColor: ORIGINAL_YARD_COLOR,
     wallColors: Object.fromEntries(PAINTABLE_ROOMS.map(room => [room.id, room.floor === 'bath' ? '#e3ded3' : '#eeeae2'])),
     kitchen: {
       color: '#c76530',
       upperColor: '#f0eee7',
       counterColor: '#ece8df',
+      backsplashColor: ORIGINAL_BACKSPLASH_COLOR,
       style: 'flat',
       depth: 0.6,
       height: 0.86,
@@ -116,9 +123,37 @@ export function validateDesign(input) {
   if (field(design, 'version', 'Design version') !== 1) {
     throw new Error('Design version must be 1.');
   }
+  let title;
+  if (Object.hasOwn(design, 'title')) {
+    title = field(design, 'title', 'Design title');
+    if (typeof title !== 'string' || !title.trim() || title.trim().length > 80 || /[<>\u0000-\u001f\u007f]/.test(title)) {
+      throw new Error('Design title must be 1–80 characters of plain text.');
+    }
+    title = title.trim();
+  }
   const mirrored = field(design, 'mirrored', 'Home mirrored orientation', true);
   if (mirrored !== undefined && typeof mirrored !== 'boolean') {
     throw new Error('Home mirrored orientation must be true or false.');
+  }
+  // Old v1 designs omitted this finish. Only an absent field receives the
+  // original color; a present invalid value or accessor remains an error.
+  const yardCabinetColor = Object.hasOwn(design, 'yardCabinetColor')
+    ? color(field(design, 'yardCabinetColor', 'Yard cabinet color'), 'Yard cabinet color')
+    : ORIGINAL_YARD_COLOR;
+  // An omitted plan keeps the reference fridge and stacked laundry. Do not
+  // add designer carpentry to older working designs or saved snapshots.
+  let yard;
+  if (Object.hasOwn(design, 'yard')) {
+    const suppliedYard = record(field(design, 'yard', 'Yard plan'), 'Yard plan');
+    const fridgeSurround = field(suppliedYard, 'fridgeSurround', 'Yard fridge surround');
+    if (typeof fridgeSurround !== 'boolean') throw new Error('Yard fridge surround must be true or false.');
+    yard = {
+      fridgeSurround,
+      laundry: supported(field(suppliedYard, 'laundry', 'Yard laundry arrangement'), YARD_LAUNDRY_LAYOUTS, 'Yard laundry arrangement'),
+    };
+    for (const [key,model] of [['fridgeModel','panasonic-nr-f603gt-ss'],['laundryModel','lg-fv1413h2ba']]) {
+      if (Object.hasOwn(suppliedYard,key)) yard[key]=supported(field(suppliedYard,key,`Yard ${key}`),new Set([model]),`Yard ${key}`);
+    }
   }
 
   const rooms = record(field(design, 'wallColors', 'Room wall colors'), 'Room wall colors');
@@ -135,11 +170,19 @@ export function validateDesign(input) {
   const modules = Array.from(list(field(cabinets, 'modules', 'Kitchen modules'), 'Kitchen modules', 1, 8), (value, index) => {
     const name = `Kitchen module ${index + 1}`;
     const module = record(value, name);
-    return {
+    const normalized = {
       id: itemId(field(module, 'id', `${name} id`), cabinetIds, `${name} id`),
       type: supported(field(module, 'type', `${name} type`), CABINET_TYPES, `${name} type`),
       width: numberInRange(field(module, 'width', `${name} width`), `${name} width`, 0.3, 1.2),
     };
+    if (Object.hasOwn(module, 'storage')) {
+      const storage = supported(field(module, 'storage', `${name} storage`), new Set(Object.keys(KITCHEN_STORAGE)), `${name} storage`);
+      if (!KITCHEN_STORAGE_TYPES[storage].includes(normalized.type)) {
+        throw new Error(`${name} storage does not fit this cabinet type.`);
+      }
+      normalized.storage = storage;
+    }
+    return normalized;
   });
   if (modules.reduce((total, module) => total + module.width, 0) > KITCHEN_RUN_LENGTH + 1e-9) {
     throw new Error(`Kitchen module widths must total ${KITCHEN_RUN_LENGTH.toFixed(1)} metres or less.`);
@@ -148,11 +191,27 @@ export function validateDesign(input) {
     color: color(field(cabinets, 'color', 'Kitchen color'), 'Kitchen color'),
     upperColor: color(field(cabinets, 'upperColor', 'Kitchen upper color'), 'Kitchen upper color'),
     counterColor: color(field(cabinets, 'counterColor', 'Kitchen counter color'), 'Kitchen counter color'),
+    backsplashColor: Object.hasOwn(cabinets,'backsplashColor')
+      ? color(field(cabinets,'backsplashColor','Kitchen backsplash color'),'Kitchen backsplash color')
+      : ORIGINAL_BACKSPLASH_COLOR,
     style: supported(field(cabinets, 'style', 'Kitchen style'), CABINET_STYLES, 'Kitchen style'),
     depth: numberInRange(field(cabinets, 'depth', 'Kitchen depth'), 'Kitchen depth', 0.45, 0.75),
     height: numberInRange(field(cabinets, 'height', 'Kitchen height'), 'Kitchen height', 0.72, 1.02),
     upper, modules,
   };
+  if (Object.hasOwn(cabinets, 'taskLighting')) {
+    const taskLighting = field(cabinets, 'taskLighting', 'Kitchen task lighting');
+    if (typeof taskLighting !== 'boolean') throw new Error('Kitchen task lighting must be true or false.');
+    kitchen.taskLighting = taskLighting;
+  }
+  if (Object.hasOwn(cabinets, 'endUpperDoors')) {
+    kitchen.endUpperDoors = supported(field(cabinets, 'endUpperDoors', 'Kitchen end upper doors'), new Set(['short-open','short-closed']), 'Kitchen end upper doors');
+  }
+  for(const [key,kind] of Object.entries(KITCHEN_MATERIAL_FIELDS)){
+    if(!Object.hasOwn(cabinets,key))continue;
+    const choices=new Set(KITCHEN_MATERIALS.filter(material=>material.kind===kind).map(material=>material.id));
+    kitchen[key]=supported(field(cabinets,key,`Kitchen ${key} material`),choices,`Kitchen ${key} material`);
+  }
 
   const furnitureIds = new Set();
   const furniture = Array.from(list(field(design, 'furniture', 'Furniture'), 'Furniture', 0, 100), (value, index) => {
@@ -183,7 +242,21 @@ export function validateDesign(input) {
       mirrored: mirrored === undefined ? false : mirrored,
     };
   });
-  return { version: 1, mirrored: mirrored === undefined ? false : mirrored, wallColors, kitchen, furniture };
+  const normalized = { version: 1, mirrored: mirrored === undefined ? false : mirrored, yardCabinetColor, wallColors, kitchen, furniture };
+  if (yard !== undefined) normalized.yard = yard;
+  if (title !== undefined) normalized.title = title;
+  return normalized;
+}
+
+export function resetOriginalColors(design) {
+  const reset = validateDesign(design);
+  const original = createDefaultState();
+  reset.wallColors = original.wallColors;
+  for (const field of ['color', 'upperColor', 'counterColor', 'backsplashColor']) reset.kitchen[field] = original.kitchen[field];
+  for (const field of Object.keys(KITCHEN_MATERIAL_FIELDS)) delete reset.kitchen[field];
+  reset.yardCabinetColor = original.yardCabinetColor;
+  for (const item of reset.furniture) item.color = CATALOG.get(item.type).color;
+  return reset;
 }
 
 export function createHistory(initial) {

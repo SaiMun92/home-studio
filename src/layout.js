@@ -1,10 +1,15 @@
 import {getCatalogItem} from './catalog.js';
+import {yardCarpentryFixtures} from './yard-layout.js';
+import {isTuckedOfficeChair} from './office-products.js';
 
 export const PLAN = {width:10.8,depth:9.05,height:2.7,scale:.018,area:93,estimated:true};
 // Estimated from inner-kitchen.jpeg: the working run ends at the forward
 // face of a tiled rear-wall projection, beside the fridge.
 export const KITCHEN_RUN = {start:4.6,end:8.5,back:8.96};
 export const KITCHEN_RUN_LENGTH = KITCHEN_RUN.end-KITCHEN_RUN.start;
+// Entrance photo/video show the living-facing counter extending beyond this
+// fixed wall endpoint. The estimated architecture does not follow cabinet edits.
+export const KITCHEN_PARTITION_START = 5.2;
 export function kitchenRun(kitchen){
   const moduleLength=kitchen.modules.reduce((sum,module)=>sum+module.width,0);
   // Extend the outer base cabinet to the grey/white floor seam without
@@ -16,7 +21,7 @@ export function kitchenRun(kitchen){
   // extension. Keep that first bay open if its appliance is replaced.
   const dishwasherIndex=kitchen.modules.findIndex(module=>module.type==='dishwasher');
   const openBays=dishwasherIndex<0?Math.min(1,kitchen.modules.length):dishwasherIndex;
-  const upperStart=KITCHEN_RUN.start+kitchen.modules.slice(0,openBays).reduce((sum,module)=>sum+module.width,0);
+  const upperStart=Math.max(KITCHEN_PARTITION_START,KITCHEN_RUN.start+kitchen.modules.slice(0,openBays).reduce((sum,module)=>sum+module.width,0));
   const upperLength=Math.max(0,KITCHEN_RUN.end-upperStart);
   return {...KITCHEN_RUN,start,length,frontExtensionLength,moduleLength,fillLength:Math.max(0,KITCHEN_RUN_LENGTH-moduleLength),upperStart,upperLength,
     x:KITCHEN_RUN.back-kitchen.depth/2,z:(start+KITCHEN_RUN.end)/2,width:kitchen.depth,depth:length};
@@ -33,7 +38,8 @@ export const ROOMS = [
   room('masterbath','Master bath',[.15,5.29,2.09,8.27],'bath',null),
   room('shelter','Household shelter',[5.57,4.58,7.35,6.99],'tile',null),
   room('yard','Yard',[6.1,7.13,8.95,8.93],'dark','inner-kitchen.jpeg'),
-  room('entry','Entrance',[9.1,4.5,10.65,8.93],'dark','entrace.jpg'),
+  {...room('entry','Entrance',[9.1,4.5,10.65,8.93],'dark','entrace.jpg'),
+    regions:[[9.1,4.5,10.65,8.93],[8.95,4.5,9.1,KITCHEN_PARTITION_START]]},
   room('hall','Hallway',[2.16,3.48,5.5,4.58],'tile',null),
   room('planter','Planter',[5.58,.12,10.65,1.02],'outdoor',null,false),
   room('ac','AC ledge',[3.65,7.14,6.0,8.14],'outdoor',null,false)
@@ -47,9 +53,20 @@ export const BUILT_IN_CABINETS=[
   {id:'entry-cabinet',label:'Entrance shoe cabinet',room:'entry',x:9.3,z:7.16,width:.4,depth:2.4,height:1.06,rotation:90,color:'#aa906c',style:'slatted'},
   {id:'yard-tv-cabinet',label:'Yard TV-box cabinet',room:'yard',x:6.53,z:8.6,width:.6,depth:.6,height:2.65,rotation:180,color:'#c76530',style:'flat'}
 ];
+// The homeowner requested half-height ledges in both bedrooms and the study.
+// Lengths follow the main window openings; depths/positions remain estimates.
+const windowLedge=(id,room,label,x,z,width)=>Object.freeze({id,room,label,x,z,width,depth:.30,height:.375,color:'#f1f0e9'});
+export const WINDOW_LEDGES=Object.freeze([
+  windowLedge('bedroom2-window-ledge','bedroom2','Bedroom 2 window ledge',4.15,.28,2.30),
+  windowLedge('master-window-ledge','master','Master bedroom window ledge',1.42,.28,2.40),
+  // The rear 20 mm sits in the window recess, clearing the study desk in place.
+  windowLedge('study-window-ledge','study','Study window ledge',2.91,6.85,1.10),
+]);
+export const BEDROOM_WINDOW_LEDGE=WINDOW_LEDGES[0];
 // Footprints match addFixtures in scene.js, including projecting appliance trim.
 // The low shower trays exclude furniture but can be stepped onto during a tour.
 export const FIXTURES=[
+  ...WINDOW_LEDGES.map(l=>fixture(l.id,l.room,l.x,l.z,l.width,l.depth)),
   ...BUILT_IN_CABINETS.map(c=>fixture(c.id,c.room,c.x,c.z,c.width,c.depth)),
   ...ROOMS.filter(r=>r.floor==='bath').flatMap(r=>{
     const [x1,z1,x2,z2]=r.bounds;
@@ -69,11 +86,14 @@ export const FIXTURES=[
 ];
 const wall=(id,a,b,room,other,openings=[],thickness=.12)=>({id,a,b,room,other,openings,thickness});
 export const WALLS = [
-  wall('west',[.05,0],[.05,8.38],'master',null,[{offset:1.3,width:2.25,sill:.75,height:1.65},{offset:6.4,width:1.3,sill:1.4,height:.85}],.18),
+  // Homeowner-confirmed solid master-bedroom side wall. Keep the separate
+  // master-bath opening farther along this same exterior wall.
+  wall('west',[.05,0],[.05,8.38],'master',null,[{offset:6.4,width:1.3,sill:1.4,height:.85}],.18),
   wall('north-master',[0,.04],[2.85,.04],'master',null,[{offset:.22,width:2.4,sill:.78,height:1.65}],.18),
   wall('north-bed',[2.85,.04],[5.5,.04],'bedroom2',null,[{offset:.15,width:2.3,sill:.78,height:1.65}],.18),
   wall('north-planter',[5.5,.04],[10.76,.04],'planter',null,[],.16),
-  wall('east',[10.74,0],[10.74,9.02],'living',null,[{offset:1.4,width:2.25,sill:.85,height:1.6}],.18),
+  // The TV backs onto a blank wall; living glazing is on the planter side.
+  wall('east',[10.74,0],[10.74,9.02],'living',null,[],.18),
   wall('south-entry',[9.02,9.02],[10.8,9.02],'entry',null,[{offset:.53,width:.96,sill:0,height:2.15}],.16),
   wall('south-yard',[6.0,9.02],[9.02,9.02],'yard',null,[],.16),
   wall('yard-west',[6.0,8.14],[6.0,9.02],'yard',null,[],.16),
@@ -93,8 +113,8 @@ export const WALLS = [
   wall('shelter-north',[5.5,4.5],[7.43,4.5],'shelter','dining',[{offset:.37,width:.92,sill:0,height:2.1}],.18),
   wall('shelter-kitchen',[7.43,4.5],[7.43,7.06],'shelter','kitchen',[],.18),
   wall('south-inner',[2.16,7.06],[7.43,7.06],'study','yard',[{offset:.2,width:1.1,sill:1.1,height:1.2},{offset:1.95,width:1.05,sill:1.2,height:1.0}],.16),
-  // Current photos and the homeowner confirm no kitchen access beside the front door.
-  wall('kitchen-entry',[9.02,4.5],[9.02,9.02],'kitchen','entry'),
+  // Open behind the living-facing extension; solid beside the front door.
+  wall('kitchen-entry',[9.02,KITCHEN_PARTITION_START],[9.02,9.02],'kitchen','entry'),
   {...wall('kitchen-end-projection',[8.35,8.72],[KITCHEN_RUN.back,8.72],'yard','yard',[],.44),finish:'wall-tile'},
   wall('yard-entry',[9.02,8.44],[9.5,8.44],'yard','entry'),
   wall('living-glass',[5.5,1.08],[10.7,1.08],'living','planter',[{offset:.12,width:4.96,sill:.08,height:2.35}],.1)
@@ -145,20 +165,20 @@ export function overlap(a,b,padding=.01){
 }
 const rect=(x,z,w,d)=>[[x-w/2,z-d/2],[x+w/2,z-d/2],[x+w/2,z+d/2],[x-w/2,z+d/2]];
 const physicalWalls=WALLS.flatMap(w=>wallSegments(w)).filter(s=>s.y-s.height/2<.1);
-export function canPlace(item,others=[],kitchen=null){
+export function canPlace(item,others=[],kitchen=null,yard=null){
   const corners=footprint(item);if(!corners.length)return {ok:false,reason:'Choose a furniture type.'};
   const samples=[...corners,[item.x,item.z],...corners.map((p,i)=>[(p[0]+corners[(i+1)%4][0])/2,(p[1]+corners[(i+1)%4][1])/2])];
   if(samples.some(([x,z])=>!ROOMS.some(r=>r.walkable&&containsRoomPoint(r,x,z,.08))))return {ok:false,reason:'Keep the furniture inside a room.'};
   if(physicalWalls.some(s=>overlap(corners,rect(s.x,s.z,s.width+.03,s.depth+.03))))return {ok:false,reason:'That position intersects a wall.'};
-  if(FIXTURES.some(f=>overlap(corners,rect(f.x,f.z,f.width,f.depth),0)))return {ok:false,reason:'That position overlaps a fixed fixture.'};
-  if(others.some(other=>other.id!==item.id&&overlap(corners,footprint(other))))return {ok:false,reason:'That position overlaps another piece of furniture.'};
+  if([...FIXTURES,...yardCarpentryFixtures(yard)].some(f=>overlap(corners,rect(f.x,f.z,f.width,f.depth),0)))return {ok:false,reason:'That position overlaps a fixed fixture.'};
+  if(others.some(other=>other.id!==item.id&&overlap(corners,footprint(other))&&!isTuckedOfficeChair(item,other)))return {ok:false,reason:'That position overlaps another piece of furniture.'};
   if(kitchen){const run=kitchenRun(kitchen);if(overlap(corners,rect(run.x,run.z,run.width,run.depth)))return {ok:false,reason:'Leave the kitchen cabinets clear.'};}
   return {ok:true};
 }
 export function canWalk(x,z,radius=.18,design={}){
   if(!ROOMS.some(r=>r.walkable&&containsRoomPoint(r,x,z,.12)))return false;
   const blocks=s=>x>s.x-s.width/2-radius&&x<s.x+s.width/2+radius&&z>s.z-s.depth/2-radius&&z<s.z+s.depth/2+radius;
-  if(physicalWalls.some(blocks)||FIXTURES.some(f=>f.blocksWalk&&blocks(f)))return false;
+  if(physicalWalls.some(blocks)||[...FIXTURES,...yardCarpentryFixtures(design.yard)].some(f=>f.blocksWalk&&blocks(f)))return false;
   const body=rect(x,z,radius*2,radius*2);
   if(design.furniture?.some(item=>overlap(body,footprint(item),0)))return false;
   if(design.kitchen){

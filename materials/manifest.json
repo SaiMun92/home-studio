@@ -1,0 +1,170 @@
+{
+  "note": "Original sample photographs; perspective-corrected crops. Colors, scale and finish appearance are approximate under the photographed lighting.",
+  "samples": [
+    {
+      "id": "houston-ash",
+      "name": "Houston Ash",
+      "code": "PA 6972 W",
+      "color": "#5e4322",
+      "texture": "materials/textures/houston-ash.jpg",
+      "swatch": "materials/swatches/houston-ash.jpg",
+      "cropQuad1200x1600": [
+        [
+          340,
+          635
+        ],
+        [
+          696,
+          613
+        ],
+        [
+          376,
+          922
+        ],
+        [
+          738,
+          868
+        ]
+      ],
+      "previewCrop1200x1600": [
+        310,
+        590,
+        460,
+        440
+      ],
+      "source": "materials/laminates/houston_ash.HEIC"
+    },
+    {
+      "id": "cinamon-poplar",
+      "name": "Cinnamon Poplar",
+      "code": "AK 6646 W",
+      "color": "#896739",
+      "texture": "materials/textures/cinamon-poplar.jpg",
+      "swatch": "materials/swatches/cinamon-poplar.jpg",
+      "cropQuad1200x1600": [
+        [
+          392,
+          565
+        ],
+        [
+          670,
+          530
+        ],
+        [
+          462,
+          790
+        ],
+        [
+          745,
+          726
+        ]
+      ],
+      "previewCrop1200x1600": [
+        350,
+        490,
+        500,
+        460
+      ],
+      "source": "materials/laminates/cinamon_poplar.HEIC"
+    },
+    {
+      "id": "jamaica-walnut",
+      "name": "Jamaica Walnut",
+      "code": "DM 6451 W",
+      "color": "#83653d",
+      "texture": "materials/textures/jamaica-walnut.jpg",
+      "swatch": "materials/swatches/jamaica-walnut.jpg",
+      "cropQuad1200x1600": [
+        [
+          116,
+          506
+        ],
+        [
+          485,
+          420
+        ],
+        [
+          237,
+          848
+        ],
+        [
+          610,
+          724
+        ]
+      ],
+      "previewCrop1200x1600": [
+        72,
+        350,
+        675,
+        645
+      ],
+      "source": "materials/laminates/jamaica_walnut.HEIC"
+    },
+    {
+      "id": "bianco-dolomite",
+      "name": "Bianco Dolomite",
+      "code": "3S3128",
+      "color": "#d2bf8d",
+      "texture": "materials/textures/bianco-dolomite.jpg",
+      "swatch": "materials/swatches/bianco-dolomite.jpg",
+      "cropQuad1200x1600": [
+        [
+          231,
+          881
+        ],
+        [
+          752,
+          520
+        ],
+        [
+          392,
+          1113
+        ],
+        [
+          914,
+          738
+        ]
+      ],
+      "previewCrop1200x1600": [
+        170,
+        310,
+        1030,
+        920
+      ],
+      "source": "materials/countertop/bianco_dolomite.HEIC"
+    },
+    {
+      "id": "calcatta-pottoro-extra",
+      "name": "Calacatta Potoro Extra",
+      "code": "3S3715",
+      "color": "#e3d1a9",
+      "texture": "materials/textures/calcatta-pottoro-extra.jpg",
+      "swatch": "materials/swatches/calcatta-pottoro-extra.jpg",
+      "cropQuad1200x1600": [
+        [
+          357,
+          596
+        ],
+        [
+          589,
+          681
+        ],
+        [
+          288,
+          817
+        ],
+        [
+          514,
+          897
+        ]
+      ],
+      "previewCrop1200x1600": [
+        45,
+        90,
+        880,
+        1150
+      ],
+      "source": "materials/countertop/calcatta_pottoro_extra.HEIC"
+    }
+  ]
+}

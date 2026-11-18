@@ -1,0 +1,53 @@
+{
+  "kind": "design-inspiration",
+  "reviewed": "2026-11-18",
+  "items": [
+    {
+      "id": "fridge-surround-inspiration",
+      "src": "./references/inspiration/fridge-surround.jpg",
+      "sourcePath": "inspiration/IMG_3030.jpg",
+      "label": "Fridge surround and overhead cupboard",
+      "observation": "Homeowner supplied inspiration for wood side panels and a cupboard above the fridge. This is not a reference measurement or photograph of the modeled home."
+    },
+    {
+      "id": "appliance-shelves-inspiration",
+      "src": "./references/inspiration/appliance-shelves.jpg",
+      "sourcePath": "inspiration/IMG_3029.PNG",
+      "label": "Open appliance platforms",
+      "observation": "Cropped homeowner supplied screenshot showing appliances on open pull-out platforms. The proposed cabinet above the washer/dryer is independently supported; platforms are shown retracted in 3D."
+    },
+    {
+      "id": "vincent-dining-inspiration",
+      "src": "./references/inspiration/vincent-dining.jpg",
+      "sourcePath": "inspiration/vincent-dining-reference.png",
+      "label": "Castlery Vincent walnut dining inspiration",
+      "observation": "Homeowner supplied a six-seat styled reference and selected the 150 cm Vincent table with matching dark upholstered chairs. Castlery lists the selected table as 150 W × 80 D × 76 H cm, seating four comfortably. The model uses four photo-inspired chairs; their dimensions remain estimated. The rug, pendant and sideboard in this image are not part of the requested table replacement.",
+      "productUrl": "https://www.castlery.com/sg/products/vincent-dining-table-walnut?length=1_5m",
+      "sku": "41960028"
+    },
+    {
+      "id": "solange-chair-inspiration",
+      "src": "./references/inspiration/solange-chair.jpg",
+      "sourcePath": "inspiration/solange-chair-reference.png",
+      "label": "Solange Chalk Boucle chair in White Wash",
+      "observation": "Homeowner selected two chairs. Castlery SKU 54000102-CB4001 gives 68 W × 77 D × 75 H cm and 42 cm seat height. Cushion shape, boucle texture and timber grain are modeled approximations.",
+      "productUrl": "https://www.castlery.com/sg/products/solange-performance-boucle-chair?material=chalk_boucle&quantity=single&wood=white_wash"
+    },
+    {
+      "id": "veronica-coffee-inspiration",
+      "src": "./references/inspiration/veronica-coffee.jpg",
+      "sourcePath": "inspiration/veronica-coffee-reference.png",
+      "label": "Veronica Sand concrete round coffee table",
+      "observation": "Homeowner selected Sand. HipVan SKU 185648 gives 70 cm diameter × 34 cm high. Rounded underside and pedestal proportions follow the Sand image; some page copy inconsistently says Black.",
+      "productUrl": "https://www.hipvan.com/products/veronica-concrete-round-coffee-table-sand"
+    },
+    {
+      "id": "omnidesk-classic-inspiration",
+      "src": "./references/inspiration/omnidesk-classic.jpg",
+      "sourcePath": "inspiration/omnidesk-classic-reference.png",
+      "label": "Omnidesk Classic Wildwood Small, Pheasantwood and black frame",
+      "observation": "Homeowner selected the Small desk in the supplied configured URL: 122 × 76 cm, Pheasantwood top and black Classic frame. The official product page gives a 74–121 cm height range; the model is shown at 74 cm. Wood grain, 26 mm top thickness, monitor and ergonomic chair details are illustrative. The room becomes a two-person office; the bed is removed and the built-in wardrobe stays in place at the homeowner’s explicit request.",
+      "productUrl": "https://theomnidesk.com/products/classic-wildwood?desk=table-top-wildwood-straight-edge-small_42678804938921_43170103197865&cmb=advanced-cable-management-bar-copy_47064120262825"
+    }
+  ]
+}
