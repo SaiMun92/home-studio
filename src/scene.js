@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
-import {PLAN,ROOMS,WALLS,kitchenRun,wallSegments,splitWallByRooms,wallSurfaceRooms,roomRegions,canPlace,canWalk} from './layout.js';
+import {PLAN,ROOMS,WALLS,kitchenRun,wallSegments,splitWallByRooms,wallSurfaceRooms,roomRegions,canPlace,canWalk,FLOOR_SURFACE_Y} from './layout.js';
 import {createFurniture,createKitchen,createBuiltInCabinets,createWindowLedges} from './objects.js';
 import {ORIGINAL_BACKSPLASH_COLOR} from './state.js';
 import {createYardAppliances} from './yard-objects.js';
+import {yardRobotVacuum} from './yard-layout.js';
 import {DOLLHOUSE_PAN_KEYS,panDollhouse} from './dollhouse-pan.js';
 
 const material=(color,roughness=.72)=>new THREE.MeshStandardMaterial({color,roughness});
@@ -34,7 +35,7 @@ function labelSprite(text){
 }
 function dispose(group){
   const materials=new Set();group.traverse(o=>{o.geometry?.dispose();if(o.material)for(const m of Array.isArray(o.material)?o.material:[o.material])materials.add(m);});
-  const textures=new Set();materials.forEach(m=>{if(m.map)textures.add(m.map);m.dispose();});textures.forEach(t=>t.dispose());group.clear();
+  const textures=new Set();materials.forEach(m=>{for(const value of Object.values(m))if(value?.isTexture)textures.add(value);m.dispose();});textures.forEach(t=>t.dispose());group.clear();
 }
 
 export function createViewer(canvas,callbacks={}){
@@ -55,6 +56,7 @@ export function createViewer(canvas,callbacks={}){
   const textures=Object.fromEntries(['tile','wood','dark','bath','outdoor','wall-tile'].map(k=>[k,floorTexture(k)]));
   let state,view='dollhouse',fullWalls=false,showCeiling=false,showLabels=true,selection=null,outline=null,drag=null,down=null,walkYaw=Math.PI,walkPitch=0,focusAnimation=null,yardDetail=false,furnitureDetail=null,endUpperDetail=false,officeDetail=false,keyboardPanned=false;
   const keys=new Set();const furnitureMap=new Map();
+  let frontUpperDetail=false,kitchenFanDetail=false;
   const worldX=x=>state?.mirrored?PLAN.width-x:x;
   const localPoint=p=>root.worldToLocal(p.clone());
   function fitDollhouse(){
@@ -75,13 +77,14 @@ export function createViewer(canvas,callbacks={}){
     renderer.setSize(width,height,false);camera.aspect=width/height;camera.updateProjectionMatrix();
     const aspect=width/height,half=keepView?topCamera.top:Math.max(6.5,6.1/aspect);
     topCamera.left=-half*aspect;topCamera.right=half*aspect;topCamera.top=half;topCamera.bottom=-half;topCamera.updateProjectionMatrix();
-    if(view==='dollhouse'&&!keepView&&!keyboardPanned){if(officeDetail)focusBedroomOffice();else if(endUpperDetail)focusEndUpper();else if(yardDetail)focusYardStorage();else if(furnitureDetail)focusFurniture(furnitureDetail);else fitDollhouse();}
+    if(view==='dollhouse'&&!keepView&&!keyboardPanned){if(frontUpperDetail)focusFrontUpper();else if(officeDetail)focusBedroomOffice();else if(endUpperDetail)focusEndUpper();else if(yardDetail)focusYardStorage(yardDetail==='robot');else if(furnitureDetail)focusFurniture(furnitureDetail);else fitDollhouse();}
+    if(view==='walk'&&kitchenFanDetail&&!keepView)focusKitchenFan(kitchenFanDetail==='close');
   }
   // Panel toggles resize synchronously; skip the observer's duplicate delivery
   // so it cannot refit a room, orbit or zoom the user has already chosen.
   const observer=new ResizeObserver(()=>resize());observer.observe(canvas);
   function addFixtures(){
-    architecture.add(createBuiltInCabinets(state.yardCabinetColor));
+    architecture.add(createBuiltInCabinets(state.yardCabinetColor,state.yard));
     architecture.add(createWindowLedges());
     const white=material('#f3f2eb',.25),metal=material('#b7bbb7',.28),dark=material('#282d2b');
     for(const r of ROOMS.filter(r=>r.floor==='bath')){const [x1,z1,x2,z2]=r.bounds;
@@ -109,11 +112,11 @@ export function createViewer(canvas,callbacks={}){
     const slabShape=new THREE.Shape();[[0,0],[10.8,0],[10.8,9.05],[6,9.05],[6,8.2],[3.55,8.2],[3.55,7.1],[2.16,7.1],[2.16,8.4],[0,8.4]].forEach(([x,z],i)=>i?slabShape.lineTo(x,-z):slabShape.moveTo(x,-z));slabShape.closePath();
     const slab=new THREE.Mesh(new THREE.ExtrudeGeometry(slabShape,{depth:.22,bevelEnabled:false}),material('#dedbd0'));slab.rotation.x=-Math.PI/2;slab.position.y=-.22;slab.receiveShadow=true;architecture.add(slab);
     for(const r of ROOMS)for(const [x1,z1,x2,z2] of roomRegions(r)){const w=x2-x1,d=z2-z1;const texture=textures[r.floor].clone();texture.needsUpdate=true;texture.repeat.set(w/2.4,d/2.4);const mat=material('#ffffff',r.floor==='tile'?.3:.7);mat.map=texture;
-      const floor=box(architecture,w,.035,d,(x1+x2)/2,.005,(z1+z2)/2,mat);floor.userData.roomId=r.id;
+      const floor=box(architecture,w,.035,d,(x1+x2)/2,FLOOR_SURFACE_Y-.0175,(z1+z2)/2,mat);floor.userData.roomId=r.id;
       if(r.walkable)box(ceilings,w,.08,d,(x1+x2)/2,PLAN.height+.04,(z1+z2)/2,material('#faf8ef'));
     }
     ceilings.visible=showCeiling;
-    for(const wall of WALLS){for(const s of wallSegments(wall,endUpperDetail&&wall.id==='kitchen-end-projection'?PLAN.height:height).flatMap(splitWallByRooms)){
+    for(const wall of WALLS){for(const s of wallSegments(wall,wall.fullHeight?PLAN.height:height).flatMap(splitWallByRooms)){
       const surfaceRooms=wallSurfaceRooms(s),mats=surfaceRooms.map((id,index)=>material(index===2?'#fbf9f1':state.wallColors[id]??'#e3dfd4'));
       if(wall.finish==='wall-tile')mats.forEach((mat,index)=>{if(index===2||index===3)return;const texture=textures['wall-tile'].clone();texture.repeat.set((index<2?s.depth:s.width)/2.4,s.height/1.2);texture.needsUpdate=true;mat.map=texture;mat.roughness=.35;});
       const mesh=box(architecture,s.width,s.height,s.depth,s.x,s.y,s.z,mats);mesh.userData.roomId=s.room;mesh.userData.surfaceRooms=surfaceRooms;mesh.userData.wallId=wall.id;
@@ -130,13 +133,15 @@ export function createViewer(canvas,callbacks={}){
   }
   function setSelected(id){selection=id;if(outline){scene.remove(outline);outline.geometry.dispose();outline.material.dispose();outline=null;}const object=furnitureMap.get(id);if(object){root.updateMatrixWorld(true);outline=new THREE.BoxHelper(object,'#607c51');outline.material.depthTest=false;outline.material.transparent=true;outline.material.opacity=.9;outline.renderOrder=9;scene.add(outline);}}
   function setView(mode){
+    kitchenFanDetail=false;
+    frontUpperDetail=false;
     keyboardPanned=false;view=mode;yardDetail=false;furnitureDetail=null;endUpperDetail=false;officeDetail=false;focusAnimation=null;keys.clear();controls.enabled=mode==='dollhouse';activeCamera=mode==='top'?topCamera:camera;
     if(mode==='walk'){camera.fov=65;camera.updateProjectionMatrix();camera.position.set(worldX(9.8),1.62,8.4);walkYaw=0;walkPitch=-.03;updateWalkLook();}
     else if(mode==='dollhouse')fitDollhouse();
     else if(mode==='top'){topCamera.zoom=1;topCamera.position.set(5.4,30,4.525);topCamera.lookAt(5.4,0,4.525);}
     buildArchitecture();rebuildLabels();resize();callbacks.onView?.(mode);
   }
-  function leaveEndUpper(){if(endUpperDetail){endUpperDetail=false;buildArchitecture();}}
+  function leaveEndUpper(){frontUpperDetail=false;kitchenFanDetail=false;if(endUpperDetail){endUpperDetail=false;buildArchitecture();}}
   function focusRoom(id){const r=ROOMS.find(r=>r.id===id);if(!r)return;keyboardPanned=false;keys.clear();leaveEndUpper();yardDetail=false;furnitureDetail=null;endUpperDetail=false;officeDetail=false;const x=worldX((r.bounds[0]+r.bounds[2])/2),z=(r.bounds[1]+r.bounds[3])/2;
     if(view==='walk'){
       const localX=(r.bounds[0]+r.bounds[2])/2,localZ=(r.bounds[1]+r.bounds[3])/2;let candidate=canWalk(localX,localZ,.18,state)?[localX,localZ]:null;
@@ -152,26 +157,53 @@ export function createViewer(canvas,callbacks={}){
     scene.background.set(enabled?'#343c42':'#eeede7');
   }
   function focusKitchenLighting(){
+    kitchenFanDetail=false;
     focusAnimation=null;
     const run=kitchenRun(state.kitchen);
     camera.position.set(worldX(7.85),1.62,4.72);
     camera.rotation.order='YXZ';camera.lookAt(worldX(run.back-state.kitchen.depth/2),1.23,6.55);
     walkYaw=camera.rotation.y;walkPitch=camera.rotation.x;updateWalkLook();
   }
-  function focusYardStorage(){
+  function focusKitchenFan(close=false){
+    keys.clear();focusAnimation=null;kitchenFanDetail=close?'close':true;
+    camera.fov=close?58:(camera.aspect<.85?85:70);camera.updateProjectionMatrix();
+    camera.position.set(worldX(close?8.12:7.88),close?1.80:1.68,close?6.22:4.05);
+    camera.rotation.order='YXZ';camera.lookAt(worldX(close?7.94:8.16),close?2.29:1.93,close?5.38:6.10);
+    walkYaw=camera.rotation.y;walkPitch=camera.rotation.x;updateWalkLook();
+  }
+  function focusYardStorage(robot=false){
     keyboardPanned=false;keys.clear();
-    leaveEndUpper();focusAnimation=null;yardDetail=true;furnitureDetail=null;endUpperDetail=false;officeDetail=false;
+    leaveEndUpper();focusAnimation=null;yardDetail=robot?'robot':true;furnitureDetail=null;endUpperDetail=false;officeDetail=false;
+    const vacuum=robot&&yardRobotVacuum(state.yard);
+    if(vacuum){
+      controls.target.set(worldX(vacuum.x+.20),.50,8.21);camera.position.set(worldX(vacuum.x+.42),1.05,7.35);controls.update();
+      camera.fov=THREE.MathUtils.radToDeg(2*Math.atan(Math.max(1.55,1.75/camera.aspect)/(2*camera.position.distanceTo(controls.target))));camera.updateProjectionMatrix();return;
+    }
     camera.fov=camera.aspect<.9?62:50;camera.updateProjectionMatrix();
-    camera.position.set(worldX(7.5),1.65,5.15);
-    controls.target.set(worldX(7.5),1.32,8.50);controls.update();
+    const center=state.yard?.cabinetLayout==='matched'?7.21:7.5;
+    camera.position.set(worldX(center),1.65,5.15);
+    controls.target.set(worldX(center),1.32,8.50);controls.update();
   }
   function focusEndUpper(){
+    frontUpperDetail=false;
     keyboardPanned=false;keys.clear();
     const entering=!endUpperDetail;focusAnimation=null;yardDetail=false;furnitureDetail=null;endUpperDetail=true;officeDetail=false;
     if(entering)buildArchitecture();
     camera.fov=camera.aspect<.9?62:48;camera.updateProjectionMatrix();
     camera.position.set(worldX(8.12),2.25,7.98);
     controls.target.set(worldX(8.62),1.93,8.20);controls.update();
+  }
+  function focusFrontUpper(){
+    keyboardPanned=false;keys.clear();leaveEndUpper();focusAnimation=null;
+    yardDetail=false;furnitureDetail=null;officeDetail=false;
+    const upper=kitchenGroup.getObjectByName('Living-end upper cabinet');
+    if(!upper){focusRoom('kitchen');return;}
+    frontUpperDetail=true;root.updateMatrixWorld(true);
+    const center=new THREE.Box3().setFromObject(upper).getCenter(new THREE.Vector3());
+    camera.position.set(worldX(kitchenRun(state.kitchen).back-3.05),2.15,center.z-.3);
+    controls.target.set(center.x,1.65,center.z+.35);controls.update();
+    const viewHeight=Math.max(1.9,1.95/camera.aspect);
+    camera.fov=THREE.MathUtils.radToDeg(2*Math.atan(viewHeight/(2*camera.position.distanceTo(controls.target))));camera.updateProjectionMatrix();
   }
   function focusBedroomOffice(){
     keyboardPanned=false;keys.clear();
@@ -185,6 +217,16 @@ export function createViewer(canvas,callbacks={}){
     leaveEndUpper();const item=state?.furniture.find(piece=>piece.id===id);
     if(!item){furnitureDetail=null;fitDollhouse();return;}
     focusAnimation=null;yardDetail=false;furnitureDetail=id;endUpperDetail=false;officeDetail=false;
+    if(item.type==='l-sofa'){
+      controls.target.set(worldX(8.95),.45,2.75);camera.position.set(worldX(8.7),5.8,-.45);controls.update();
+      camera.fov=THREE.MathUtils.radToDeg(2*Math.atan(Math.max(4.4,4.1/camera.aspect)/(2*camera.position.distanceTo(controls.target))));camera.updateProjectionMatrix();return;
+    }
+    if(item.type==='lg-styler-s3mfc'){
+      const a=item.rotation*Math.PI/180,front=[Math.sin(a),Math.cos(a)],right=[Math.cos(a),-Math.sin(a)];
+      controls.target.set(worldX(item.x-right[0]*.55),1.04,item.z-right[1]*.55);
+      camera.position.set(worldX(item.x+front[0]*2.1+right[0]*1.5),2.35,item.z+front[1]*2.1+right[1]*1.5);controls.update();
+      camera.fov=THREE.MathUtils.radToDeg(2*Math.atan(Math.max(2.65,2.5/camera.aspect)/(2*camera.position.distanceTo(controls.target))));camera.updateProjectionMatrix();return;
+    }
     const living=item.type==='veronica-coffee';
     camera.fov=camera.aspect<.9?(living?66:58):(living?50:42);camera.updateProjectionMatrix();
     camera.position.set(worldX(item.x+(living ? .65 : 2.3)),living?3.1:2.65,item.z+(living?3.7:2.55));
@@ -213,7 +255,7 @@ export function createViewer(canvas,callbacks={}){
     if(event.defaultPrevented||event.ctrlKey||event.metaKey||event.altKey||event.isComposing||navigationBlocked(event.target)){keys.clear();return;}
     const key=event.key.toLowerCase();
     const walking=view==='walk'&&!event.target.closest?.('button')&&['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(key);
-    if(walking||(view==='dollhouse'&&!drag&&DOLLHOUSE_PAN_KEYS.has(key))){event.preventDefault();keys.add(key);}
+    if(walking||(view==='dollhouse'&&!drag&&DOLLHOUSE_PAN_KEYS.has(key))){if(walking)kitchenFanDetail=false;event.preventDefault();keys.add(key);}
   });
   window.addEventListener('keyup',event=>keys.delete(event.key.toLowerCase()));
   window.addEventListener('blur',()=>keys.clear());
@@ -232,5 +274,5 @@ export function createViewer(canvas,callbacks={}){
     renderer.render(scene,activeCamera);
   }
   resize();requestAnimationFrame(animate);
-  return {setState,setSelected,setView,focusRoom,focusFurniture,setLightingPreview,focusKitchenLighting,focusYardStorage,focusEndUpper,focusBedroomOffice,resizeKeepingView(){resize(true);},setWalkInput(key,active){if(active&&view==='walk')keys.add(key);else keys.delete(key);},setWalls(value){fullWalls=value;buildArchitecture();},setCeiling(value){showCeiling=value;ceilings.visible=value;},setLabels(value){showLabels=value;labels.visible=value&&view!=='walk';},zoom(delta){if(view==='walk')return;if(view==='top'){topCamera.zoom=Math.max(.6,Math.min(3,topCamera.zoom+delta*.2));topCamera.updateProjectionMatrix();}else{const dir=camera.position.clone().sub(controls.target);dir.multiplyScalar(delta>0?.85:1.18);camera.position.copy(controls.target).add(dir);}},screenshot(){renderer.render(scene,activeCamera);return canvas.toDataURL('image/png');},get view(){return view;},get renderer(){return renderer;},getSceneStats(){return {furnitureCount:furnitureMap.size,triangles:renderer.info.render.triangles,drawCalls:renderer.info.render.calls};}};
+  return {setState,setSelected,setView,focusRoom,focusFurniture,setLightingPreview,focusKitchenLighting,focusKitchenFan,focusYardStorage,focusEndUpper,focusFrontUpper,focusBedroomOffice,resizeKeepingView(){resize(true);},setWalkInput(key,active){if(active&&view==='walk'){kitchenFanDetail=false;keys.add(key);}else keys.delete(key);},setWalls(value){fullWalls=value;buildArchitecture();},setCeiling(value){showCeiling=value;ceilings.visible=value;},setLabels(value){showLabels=value;labels.visible=value&&view!=='walk';},zoom(delta){if(view==='walk')return;if(view==='top'){topCamera.zoom=Math.max(.6,Math.min(3,topCamera.zoom+delta*.2));topCamera.updateProjectionMatrix();}else{const dir=camera.position.clone().sub(controls.target);dir.multiplyScalar(delta>0?.85:1.18);camera.position.copy(controls.target).add(dir);}},screenshot(){renderer.render(scene,activeCamera);return canvas.toDataURL('image/png');},get view(){return view;},get renderer(){return renderer;},getSceneStats(){return {furnitureCount:furnitureMap.size,triangles:renderer.info.render.triangles,drawCalls:renderer.info.render.calls};}};
 }

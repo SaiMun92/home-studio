@@ -13,6 +13,12 @@ import { OMNIDESK, OFFICE_CHAIR, getOfficeProduct, useOfficeProduct } from './of
 import { applyBedroomOffice } from './bedroom-office.js';
 import { kitchenPrepModules } from './kitchen-prep.js';
 import { createEditorSections } from './editor-sections.js';
+import { LG_STYLER } from './styler-product.js';
+import { applyMasterStyler } from './master-styler.js';
+import { L_SOFA } from './l-sofa-spec.js';
+import { applyLShapedSofa } from './l-sofa-layout.js';
+import {DREAME_X60_MODELS,getDreameProduct} from './dreame-product.js';
+import {yardRobotVacuum} from './yard-layout.js';
 
 const STORAGE_KEY = 'home-studio-design-v1';
 const PAINTS = [['Off-white','#eeeae2'],['Linen','#d6cbbb'],['Sage','#a6b29a'],['Clay','#bf8b72'],['Mist','#b5c3c5'],['Olive','#778166'],['Ink','#485b65'],['Chalk','#faf8f1']];
@@ -53,7 +59,7 @@ const paths = {
  plant:'<path d="m7 16 2 6h6l2-6H7Zm5 0V7m0 5c-7 0-9-5-7-8 5 0 7 4 7 8Zm0-3c0-5 3-8 8-7 0 5-3 7-8 7Z"/>',
  bath:'<path d="M3 12h18l-2 7H5l-2-7Zm2 7v3m14-3v3M5 12V5a3 3 0 0 1 6 0H8"/>'
 };
-const icon = name => '<svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(paths[name]||paths[({'vincent-dining':'dining','veronica-coffee':'coffee','solange-chair':'armchair','omnidesk-classic':'desk','office-chair':'armchair'})[name]||'home'])+'</svg>';
+const icon = name => '<svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(paths[name]||paths[({'vincent-dining':'dining','veronica-coffee':'coffee','solange-chair':'armchair','omnidesk-classic':'desk','office-chair':'armchair','lg-styler-s3mfc':'wardrobe','l-sofa':'sofa'})[name]||'home'])+'</svg>';
 const roomIcon = r => ({living:'sofa',dining:'dining',master:'bed',bedroom2:'singlebed',study:'desk',kitchen:'cabinet',bath2:'bath',masterbath:'bath',yard:'plant',entry:'home'})[r.id]||'plan';
 function normalizeDesign(input,previous=null){
  const next=validateDesign(input);
@@ -150,12 +156,32 @@ function yardStoragePanel(){
  const yard=state.yard??{fridgeSurround:false,laundry:'stacked'};
  return '<section class="editor-section" data-editor-section="yard-storage"><div class="field-heading"><h3>Fridge & appliance storage</h3><p>Carpentry inspired by your reference photos.</p></div>'+
  '<button class="secondary-button wide" data-action="focus-yard-storage">View fridge & appliance cabinet</button>'+
- '<label class="toggle-row"><span>Fridge surround & top cupboard<small>Wood frame with matching upper-cabinet doors.</small></span><input type="checkbox" id="fridge-surround" '+(yard.fridgeSurround?'checked':'')+'></label>'+
+ (yard.cabinetLayout==='matched'?'<p class="body-note">Matching yard cabinets: 740 W × 2640 H mm each, with aligned fronts and tops. The DB cupboard is 360 mm deep to fit the wall behind it; the other two are 740 mm deep. Change their shared finish under Yard → Walls → Yard cabinet color.</p>':'')+
+ '<label class="toggle-row"><span>Fridge surround & top cupboard<small>'+(yard.cabinetLayout==='matched'?'Frame and doors match the other yard cabinets.':'Wood frame with matching upper-cabinet doors.')+'</small></span><input type="checkbox" id="fridge-surround" '+(yard.fridgeSurround?'checked':'')+'></label>'+
  '<label class="field-label spaced" for="yard-laundry">Laundry arrangement</label><select id="yard-laundry"><option value="stacked" '+(yard.laundry==='stacked'?'selected':'')+'>Original washer and dryer stack</option><option value="combo-tower" '+(yard.laundry==='combo-tower'?'selected':'')+'>Combo + open appliance shelves</option></select>'+
  (yard.fridgeSurround||yard.fridgeModel?'<p class="body-note"><strong>Panasonic NR-F603GT-SS</strong><br>685 W × 1828 H × 745 D mm · space grey<br><a href="https://www.courts.com.sg/panasonic-6-dr-fridge-588l---space-grey-nr-f603gt-ss-IP178847.html" target="_blank" rel="noopener">View fridge specifications ↗</a></p>':'')+
  (yard.laundry==='combo-tower'?'<p class="body-note"><strong>LG FV1413H2BA</strong><br>13 kg wash / 8 kg dry<br>600 W × 850 H × 615 D mm · black<br><a href="https://www.lg.com/sg/washing-machines/washer-dryers/fv1413h2ba/" target="_blank" rel="noopener">View washer/dryer specifications ↗</a></p><p class="body-note">Open shelves show an air fryer, multicooker and blender. Shelf runners are shown retracted; the frame supports the shelves separately from the machine.</p>':'')+
  '<p class="body-note subtle">Cabinet openings and small appliances are approximate. Allowances for ventilation, hoses, vibration and door opening need checking against the installation manuals and site measurements.</p>'+
  '<div class="yard-inspiration-links"><a href="./references/inspiration/fridge-surround.jpg" target="_blank" rel="noopener">Fridge inspiration ↗</a><a href="./references/inspiration/appliance-shelves.jpg" target="_blank" rel="noopener">Appliance shelves inspiration ↗</a></div></section>';
+}
+
+function setYardCabinetColor(design,color){
+ design.yardCabinetColor=color;
+ if(design.yard)delete design.yard.cabinetMaterial;
+}
+
+function yardColorPanel(){
+ const matched=state.yard?.cabinetLayout==='matched';
+ const sample=matched?getKitchenMaterial(state.yard.cabinetMaterial,'laminate'):null;
+ return '<section class="editor-section" data-editor-section="yard-color"><div class="field-heading"><h3>Yard cabinet color</h3><p>'+(matched?'Choose one finish for all three yard cabinets.':'Choose a finish for the tall DB-box cabinet.')+'</p></div>'+
+ (sample?'<p class="body-note">Current finish: '+esc(sample.name)+'. Choosing a color replaces the wood texture on all three cabinets.</p>':'')+
+ swatches(FINISHES,sample?null:state.yardCabinetColor,'yard-finish')+colorField('yard-cabinet-color',matched?'All yard cabinets':'Yard cabinet color',state.yardCabinetColor)+'<button class="secondary-button wide" data-action="reset-yard-color">Restore original orange</button></section>';
+}
+
+function dbVacuumPanel(){
+ const product=getDreameProduct(state.yard?.robotVacuum),fit=yardRobotVacuum(state.yard);
+ return '<section class="editor-section" data-editor-section="db-vacuum"><div class="field-heading"><h3>Robot vacuum in DB cabinet</h3><p>A floor-level opening below the retained DB cupboard.</p></div><label class="field-label" for="db-robot-vacuum">Lower DB cabinet</label><select id="db-robot-vacuum"><option value="">Closed lower cabinet</option>'+Object.values(DREAME_X60_MODELS).map(p=>'<option value="'+p.id+'" '+(p.id===product?.id?'selected':'')+'>Open + '+p.label+'</option>').join('')+'</select>'+
+ (product?'<p class="body-note"><strong>'+product.label+'</strong><br>Dock: '+mm(product.width)+' W × '+mm(product.depth)+' D × '+mm(product.height)+' H<br>Robot: 350 × 350 mm; 79.5 mm high with sensor retracted, 102.8 mm raised.</p><button class="secondary-button wide" data-action="focus-db-vacuum">View robot vacuum</button><p class="body-note">Lower doors and the base threshold are removed. The upper cupboard and cabinet front stay in place.'+(fit.projection>0?' The dock projects about '+Math.round(fit.projection*1000)+' mm beyond the cabinet; its entry ramp extends farther.':' The dock sits within the cabinet depth.')+'</p><p class="body-note subtle">The ramp and 20 mm rear service gap are illustrative; installation access and connections need checking.</p><p class="body-note"><a href="'+product.url+'" target="_blank" rel="noopener">Dreame product page ↗</a> · <a href="'+product.specification+'" target="_blank" rel="noopener">Published dimensions ↗</a></p>':'<p class="body-note subtle">Choose a dock to open only the lower DB cabinet. You can undo this change.</p>')+'</section>';
 }
 
 function wallsPanel(){
@@ -165,7 +191,7 @@ function wallsPanel(){
  '<div class="paint-preview" style="--paint:'+color+'" role="img" aria-label="Preview of '+esc(room.name)+' wall paint"><div class="preview-window"><i></i><i></i></div><div class="preview-floor"></div><div class="preview-plant">'+icon('plant')+'</div><span>'+esc(room.name)+'</span></div>',
  '<label class="field-label spaced">A considered palette</label>'+swatches(PAINTS,color,'paint'),colorField('wall-color','Choose a custom color',color),
  '<button class="secondary-button wide" data-action="paint-all">Apply color throughout '+icon('arrow')+'</button></section>',
- currentRoom==='yard'?'<section class="editor-section" data-editor-section="yard-color"><div class="field-heading"><h3>Yard cabinet color</h3><p>Choose a finish for the tall TV-box cabinet.</p></div>'+swatches(FINISHES,state.yardCabinetColor,'yard-finish')+colorField('yard-cabinet-color','Yard cabinet color',state.yardCabinetColor)+'<button class="secondary-button wide" data-action="reset-yard-color">Restore original orange</button></section>':'',
+ currentRoom==='yard'?dbVacuumPanel()+yardColorPanel():'',
  currentRoom==='yard'?yardStoragePanel():'',
  '<section class="editor-section" data-editor-section="room-reference"><div class="field-heading"><h3>Room references & layout</h3></div>',referenceCallout(room),
  '<label class="toggle-row"><span>Mirrored floor plan<small>Your confirmed home orientation.</small></span><input id="mirror-home" type="checkbox" '+(state.mirrored?'checked':'')+'></label><p class="body-note subtle">93 m² as shown on the brochure. Room sizes and ceiling height are estimated; colors vary with light and screen.</p></section>'
@@ -179,6 +205,12 @@ function kitchenPanel(){
  '<section class="editor-section" data-editor-section="kitchen-view"><div class="field-heading"><h3>Kitchen view</h3><p>Explore the materials and the details.</p></div><button class="secondary-button wide" data-action="focus-kitchen">'+icon('cabinet')+' Take me to the kitchen '+icon('arrow')+'</button></section>',
  kitchenPrepModules(k)?'<section class="editor-section" data-editor-section="prep-space"><div class="field-heading"><h3>More preparation space</h3><p>Move the sink closer to the dishwasher and put prep drawers beneath the freed worktop. The sink keeps its size; the stove stays in place.</p></div><button class="primary-button wide" data-action="apply-kitchen-prep">Move sink next to dishwasher</button><p class="body-note subtle">Applies just this kitchen adjustment and can be undone.</p></section>':'',
  yardStoragePanel(),
+ '<section class="editor-section" data-editor-section="directional-fan"><div class="field-heading"><h3>Kitchen directional fan</h3><p>Ceiling mounted near the entrance, toward the blank wall, angled down toward the sink/prep position.</p></div>',
+ '<label class="toggle-row"><span>Three-blade metal fan<small>Inspired by your first reference photo.</small></span><input type="checkbox" id="kitchen-directional-fan" '+(k.directionalFan?'checked':'')+'></label>',
+ '<button class="secondary-button wide" data-action="focus-kitchen-fan">View fan placement</button><button class="text-button" data-action="focus-kitchen-fan-detail">View fan close up</button><p class="body-note"><a href="./references/inspiration/kitchen-directional-fan.jpg" target="_blank" rel="noopener">Your fan reference</a></p><p class="body-note subtle">Illustrative 300 mm blade sweep and approximately 450 mm drop. Exact product dimensions, mounting height and clearances need confirmation.</p></section>',
+ '<section class="editor-section" data-editor-section="front-upper"><div class="field-heading"><h3>Upper cabinet at the living-room end</h3><p>The first upper beside the sink cupboards, above the dishwasher in Designer inspiration.</p></div>',
+ '<label class="toggle-row"><span>Three open ledges<small>Three shelves and an outer side panel in the upper-cabinet finish, with no doors.</small></span><input type="checkbox" id="front-upper-shelves" '+(k.frontUpperShelves?'checked':'')+'></label>',
+ '<button class="secondary-button wide" data-action="focus-front-upper">View upper shelves</button></section>',
  '<section class="editor-section" data-editor-section="end-upper"><div class="field-heading"><h3>Upper cabinet beside the fridge</h3><p>Open door edges align with the outer edge of the tiled wall beside the fridge.</p></div>',
  '<label class="field-label" for="end-upper-doors">End-cabinet doors</label><select id="end-upper-doors"><option value="" '+(!k.endUpperDoors?'selected':'')+'>Original doors · closed</option><option value="short-closed" '+(k.endUpperDoors==='short-closed'?'selected':'')+'>Shorter doors · closed</option><option value="short-open" '+(k.endUpperDoors==='short-open'?'selected':'')+'>Shorter doors · open 90°</option></select>',
  '<button class="secondary-button wide" data-action="focus-end-upper">View door clearance</button><p class="body-note subtle">Re-divides the end upper cabinets into two 258 mm doors, with a shelf inside. Lower cabinets stay in place. Clearances follow the estimated wall and fridge dimensions.</p></section>',
@@ -213,8 +245,16 @@ function livingProductDetails(item){
  const chair=product.type===SOLANGE_CHAIR.type;
  return '<p class="body-note"><strong>'+esc(product.label)+'</strong><br>'+esc(product.finish)+'<br>'+(chair?'68 W × 77 D × 75 H cm · 42 cm seat height':'70 cm diameter × 34 cm high')+'</p><p class="body-note"><a href="'+product.url+'" target="_blank" rel="noopener">View product specifications ↗</a> · <a href="'+product.image+'" target="_blank" rel="noopener">Your reference photo ↗</a></p><button class="secondary-button wide" data-action="focus-living-seating">View living seating</button>';
 }
+function lSofaPanel(){
+ const sofa=state.furniture.find(item=>item.type===L_SOFA.type&&pointInRoom(item.x,item.z)?.id==='living');
+ const row=sofa?.rotation===0&&sofa.mirrored;
+ return '<section class="editor-section" data-editor-section="l-sofa"><div class="field-heading"><h3>L-shaped sofa</h3><p>Grey upholstered seating with a longer lounge at one end. Estimated 240 × 155 cm overall, 88 cm high.</p></div><label class="field-label" for="l-sofa-layout">Position by the balcony</label><select id="l-sofa-layout"><option value="balcony-chaise" '+(!row?'selected':'')+'>Chaise at the balcony end</option><option value="balcony-row" '+(row?'selected':'')+'>Long seating row along the balcony</option></select><button class="primary-button wide" data-action="apply-l-sofa">'+(sofa?'Arrange L-shaped sofa':'Replace sofa with L shape')+'</button>'+(sofa?'<button class="secondary-button wide" data-action="focus-l-sofa">View sofa and balcony</button>':'')+'<p class="body-note subtle">Keeps your sofa color and coffee table. Nearby lounge chairs or the plant move only if needed to make room. The arrangement can be undone.</p></section>';
+}
+function lSofaDetails(){
+ return '<p class="body-note"><strong>L-shaped upholstered sofa</strong><br>Estimated 240 × 155 cm overall · 88 cm high.<br>Three seats with an extended lounge; the inside corner remains open.</p><button class="secondary-button wide" data-action="focus-l-sofa">View sofa and balcony</button>';
+}
 function livingSeatingPanel(){
- return '<section class="editor-section" data-editor-section="living-seating"><div class="field-heading"><h3>Living seating</h3><p>A Sand Veronica coffee table with two Chalk Bouclé Solange chairs in White Wash, beside your existing sofa.</p></div><button class="primary-button wide" data-action="apply-living-seating">Apply table + two chairs</button><p class="body-note subtle">Adds the missing chairs and leaves existing Solange edits intact. The table may shift slightly to make room. All pieces remain individually movable.</p></section>';
+ return '<section class="editor-section" data-editor-section="living-seating"><div class="field-heading"><h3>Living seating</h3><p>A Sand Veronica coffee table with two Chalk Bouclé Solange chairs in White Wash, beside your existing sofa.</p></div><button class="primary-button wide" data-action="apply-living-seating">Apply table + two chairs</button><p class="body-note subtle">Adds the missing chairs and leaves existing Solange edits intact. The table or plant may move to make room. All pieces remain individually movable.</p></section>';
 }
 function officePanel(){
  return '<section class="editor-section" data-editor-section="office"><div class="field-heading"><h3>Two-person office</h3><p>Two Pheasantwood Omnidesks face opposite side walls, staggered with compact, partly tucked chairs to clear the window ledge and keep access to the built-in wardrobe and doorway.</p></div><button class="primary-button wide" data-action="apply-bedroom-office">Arrange two-person office</button><button class="secondary-button wide" data-action="focus-bedroom-office">View office</button><p class="body-note subtle">Replaces Bedroom 2’s bed and any old desk; keeps the built-in wardrobe in place with its doors facing into the room. Adds two 122 × 76 cm desks with monitors and two movable chairs. Reapplying restores these desk and chair positions. Other rooms stay as edited. You can undo this change.</p></section>';
@@ -223,19 +263,26 @@ function officeProductDetails(item){
  if(item.type===OFFICE_CHAIR.type)return '<p class="body-note"><strong>Ergonomic office chair</strong><br>Estimated 58 × 58 cm footprint, 46 cm seat height. Generic chair styling; movable independently from the desk.</p><button class="secondary-button wide" data-action="focus-bedroom-office">View office</button>';
  return '<p class="body-note"><strong>Omnidesk Classic Wildwood · Small</strong><br>Pheasantwood · Black frame<br>122 × 76 cm desktop · shown at 74 cm height<br>27-inch monitor, keyboard, mouse and cable tray. Accessories and wood grain are illustrative; height adjustment is not animated.</p><p class="body-note"><a href="'+OMNIDESK.url+'" target="_blank" rel="noopener">View desk specifications ↗</a> · <a href="'+OMNIDESK.image+'" target="_blank" rel="noopener">Your reference image ↗</a></p><button class="secondary-button wide" data-action="focus-bedroom-office">View office</button>';
 }
+function stylerPanel(){
+ const existing=state.furniture.some(item=>item.type===LG_STYLER.type&&pointInRoom(item.x,item.z)?.id==='master');
+ return '<section class="editor-section" data-editor-section="master-styler"><div class="field-heading"><h3>LG Styler beside wardrobe</h3><p>S3MFC · Essence Mirrored Finish<br>44.5 cm wide × 58.5 cm deep × 185 cm high.</p></div><button class="primary-button wide" data-action="'+(existing?'focus-master-styler':'apply-master-styler')+'">'+(existing?'View Styler and wardrobe':'Add Styler beside wardrobe')+'</button><p class="body-note subtle">Fits beside the wardrobe facing into the room. If needed, the original bed moves 10 cm toward the window. The whole change can be undone.</p><p class="body-note"><a href="'+LG_STYLER.url+'" target="_blank" rel="noopener">LG product specifications ↗</a> · <a href="'+LG_STYLER.image+'" target="_blank" rel="noopener">Your reference image ↗</a></p></section>';
+}
+function stylerProductDetails(){
+ return '<p class="body-note"><strong>LG Styler S3MFC</strong><br>Essence Mirrored Finish<br>445 W × 585 D × 1850 H mm<br>Closed mirror door, touch controls and silver surround. Mirror appearance is illustrative.</p><p class="body-note"><a href="'+LG_STYLER.url+'" target="_blank" rel="noopener">View LG specifications ↗</a> · <a href="'+LG_STYLER.image+'" target="_blank" rel="noopener">Your reference image ↗</a></p><button class="secondary-button wide" data-action="focus-master-styler">View Styler and wardrobe</button>';
+}
 function furniturePanel(){
  const item=state.furniture.find(i=>i.id===selectedFurniture),entry=item&&getCatalogItem(item.type);
  const options=state.furniture.map(i=>'<option value="'+i.id+'" '+(i.id===selectedFurniture?'selected':'')+'>'+esc(i.label)+' · '+esc(pointInRoom(i.x,i.z)?.name||'Home')+'</option>').join('');
  const selection=item?[
  '<div class="selected-item"><span class="item-icon">'+icon(item.type)+'</span><span><strong>'+esc(item.label)+'</strong><small>'+fmt(entry.width)+' × '+fmt(entry.depth)+' m · estimated footprint</small></span></div>',
  '<label class="field-label" for="replace-furniture">Replace with</label><select id="replace-furniture">'+FURNITURE_CATALOG.map(i=>'<option value="'+i.type+'" '+(i.type===item.type?'selected':'')+'>'+esc(i.label)+'</option>').join('')+'</select>',
- item.type===VINCENT_DINING.type?'<p class="body-note"><strong>Castlery Vincent · Walnut</strong><br>150 W × 80 D × 76 H cm · 4 cm tabletop<br>Four seats. Chair dimensions and the footprint with chairs are approximate.</p><p class="body-note"><a href="'+VINCENT_DINING.url+'" target="_blank" rel="noopener">View table specifications ↗</a> · <a href="'+VINCENT_DINING.image+'" target="_blank" rel="noopener">Your inspiration photo ↗</a></p><button class="secondary-button wide" data-action="focus-dining">View dining set</button>':getLivingProduct(item.type)?livingProductDetails(item):getOfficeProduct(item.type)?officeProductDetails(item):'<label class="field-label spaced">A different character</label><div class="segmented" aria-label="Furniture style">'+['classic','modern'].map(v=>'<button data-variant="'+v+'" class="'+(item.variant===v?'active':'')+'" aria-pressed="'+(item.variant===v)+'">'+(v==='classic'?'Classic':'Modern')+'</button>').join('')+'</div>',
- colorField('furniture-color',item.type===SOLANGE_CHAIR.type?'Upholstery color':item.type===VERONICA_COFFEE.type?'Concrete color':item.type===OMNIDESK.type?'Desktop wood color':item.type===OFFICE_CHAIR.type?'Chair upholstery':'Material color',item.color),
+ item.type===VINCENT_DINING.type?'<p class="body-note"><strong>Castlery Vincent · Walnut</strong><br>150 W × 80 D × 76 H cm · 4 cm tabletop<br>Four seats. Chair dimensions and the footprint with chairs are approximate.</p><p class="body-note"><a href="'+VINCENT_DINING.url+'" target="_blank" rel="noopener">View table specifications ↗</a> · <a href="'+VINCENT_DINING.image+'" target="_blank" rel="noopener">Your inspiration photo ↗</a></p><button class="secondary-button wide" data-action="focus-dining">View dining set</button>':getLivingProduct(item.type)?livingProductDetails(item):getOfficeProduct(item.type)?officeProductDetails(item):item.type===LG_STYLER.type?stylerProductDetails():item.type===L_SOFA.type?lSofaDetails():'<label class="field-label spaced">A different character</label><div class="segmented" aria-label="Furniture style">'+['classic','modern'].map(v=>'<button data-variant="'+v+'" class="'+(item.variant===v?'active':'')+'" aria-pressed="'+(item.variant===v)+'">'+(v==='classic'?'Classic':'Modern')+'</button>').join('')+'</div>',
+ colorField('furniture-color',[SOLANGE_CHAIR.type,L_SOFA.type].includes(item.type)?'Upholstery color':item.type===VERONICA_COFFEE.type?'Concrete color':item.type===OMNIDESK.type?'Desktop wood color':item.type===OFFICE_CHAIR.type?'Chair upholstery':item.type===LG_STYLER.type?'Appliance surround':'Material color',item.color),
  '<div class="position-controls"><div><label class="field-label">Move · 20 cm</label><div class="move-pad"><button class="icon-button bordered" data-move="up" title="Move toward the top of the plan" aria-label="Move up">'+icon('up')+'</button><button class="icon-button bordered" data-move="left" title="Move left on the plan" aria-label="Move left">'+icon('left')+'</button><span>'+icon('plan')+'</span><button class="icon-button bordered" data-move="right" title="Move right on the plan" aria-label="Move right">'+icon('arrow')+'</button><button class="icon-button bordered" data-move="down" title="Move toward the bottom of the plan" aria-label="Move down">'+icon('down')+'</button></div></div>',
  '<div class="rotation-controls"><label class="field-label">Rotate · 45°</label><div class="button-row"><button class="icon-button bordered" data-rotate="-45" title="Rotate counterclockwise" aria-label="Rotate counterclockwise">'+icon('undo')+'</button><button class="icon-button bordered" data-rotate="45" title="Rotate clockwise" aria-label="Rotate clockwise">'+icon('redo')+'</button></div><button class="secondary-button" data-rotate="180" title="Face the opposite direction without moving the piece">Turn 180°</button><small>'+Math.round(item.rotation)+'° rotation</small></div></div>',
  '<div class="button-row"><button class="secondary-button" data-action="duplicate">'+icon('copy')+' Duplicate</button><button class="secondary-button danger" data-action="delete">'+icon('trash')+' Remove</button></div><p class="body-note subtle">Drag a piece in the model, or use arrow keys to move and R to rotate. Moves keep walls, cabinets and other furniture clear.</p>'
  ].join(''):'<div class="empty-selection">'+icon('sofa')+'<strong>Make a little room.</strong><p>Choose a piece in the model to move it, change its finish or try another style.</p></div>';
- return (currentRoom==='living'?livingSeatingPanel():currentRoom==='bedroom2'?officePanel():'')+'<section class="editor-section" data-editor-section="selected-furniture"><div class="field-heading"><h3>Selected furniture</h3><p>Find the pieces that make it feel like home.</p></div><label class="field-label" for="selected-furniture">Selected piece</label><select id="selected-furniture"><option value="">Choose a piece in your home</option>'+options+'</select>'+selection+'</section><section class="editor-section" data-editor-section="add-furniture"><div class="field-heading"><h3>Add furniture</h3><p>Add a piece to '+esc(roomById(currentRoom).name.toLowerCase())+'.</p></div><label class="field-label" for="furniture-room">Place new pieces in</label><select id="furniture-room">'+roomOptions()+'</select><div class="catalog-grid">'+FURNITURE_CATALOG.map(i=>'<button data-add="'+i.type+'" title="Add '+esc(i.label.toLowerCase())+'" aria-label="Add '+esc(i.label)+'"><span>'+icon(i.type)+'</span><strong>'+esc(i.label)+'</strong><small>'+fmt(i.width)+' × '+fmt(i.depth)+' m</small><i>'+icon('plus')+'</i></button>').join('')+'</div><p class="body-note subtle">Pieces are illustrative and sized approximately. A clear position is found automatically in your chosen room.</p></section>';
+ return (currentRoom==='living'?lSofaPanel()+livingSeatingPanel():currentRoom==='bedroom2'?officePanel():currentRoom==='master'?stylerPanel():'')+'<section class="editor-section" data-editor-section="selected-furniture"><div class="field-heading"><h3>Selected furniture</h3><p>Find the pieces that make it feel like home.</p></div><label class="field-label" for="selected-furniture">Selected piece</label><select id="selected-furniture"><option value="">Choose a piece in your home</option>'+options+'</select>'+selection+'</section><section class="editor-section" data-editor-section="add-furniture"><div class="field-heading"><h3>Add furniture</h3><p>Add a piece to '+esc(roomById(currentRoom).name.toLowerCase())+'.</p></div><label class="field-label" for="furniture-room">Place new pieces in</label><select id="furniture-room">'+roomOptions()+'</select><div class="catalog-grid">'+FURNITURE_CATALOG.map(i=>'<button data-add="'+i.type+'" title="Add '+esc(i.label.toLowerCase())+'" aria-label="Add '+esc(i.label)+'"><span>'+icon(i.type)+'</span><strong>'+esc(i.label)+'</strong><small>'+fmt(i.width)+' × '+fmt(i.depth)+' m</small><i>'+icon('plus')+'</i></button>').join('')+'</div><p class="body-note subtle">Pieces are illustrative and sized approximately. A clear position is found automatically in your chosen room.</p></section>';
 }
 function renderInspector(){
  editorSections.capture();
@@ -319,7 +366,7 @@ const actions={
  'saved-designs'(){designLibraryUI.open();},
  'reset-colors'(){if(commit(draft=>{Object.assign(draft,resetOriginalColors(draft));},'Original colors restored. Your layout is unchanged.'))kitchenMaterialsUI.sync({reset:true});},
  'reset-backsplash-color'(){commit(draft=>{draft.kitchen.backsplashColor=ORIGINAL_BACKSPLASH_COLOR;},'Original copper backsplash restored.');},
- 'reset-yard-color'(){commit(draft=>{draft.yardCabinetColor=createDefaultState().yardCabinetColor;},'Yard cabinet restored to its original orange.');},
+ 'reset-yard-color'(){commit(draft=>{setYardCabinetColor(draft,createDefaultState().yardCabinetColor);},'Yard cabinet finish restored to original orange.');},
  undo(){if(history.canUndo){history.undo();syncDesign();kitchenMaterialsUI.sync({reset:true});}},redo(){if(history.canRedo){history.redo();syncDesign();kitchenMaterialsUI.sync({reset:true});}},
  references(){openGallery();},plan(){openGallery('plan');},'close-gallery'(){$('#reference-dialog').close();},'gallery-back'(){galleryDetail=null;renderGallery();},
  import(){$('#import-file').click();},
@@ -328,6 +375,12 @@ const actions={
  'reset-view'(){setView('dollhouse');},'zoom-in'(){viewer?.zoom(1);},'zoom-out'(){viewer?.zoom(-1);},
  'paint-all'(){const color=state.wallColors[currentRoom];commit(d=>{for(const id of Object.keys(d.wallColors))d.wallColors[id]=color;},'One palette, throughout your home.');},
  'focus-kitchen'(){selectRoom('kitchen');},
+ 'apply-master-styler'(){if(commit(draft=>{applyMasterStyler(draft,{allowBedShift:true});},'LG Styler added beside the master-bedroom wardrobe. Undo restores the previous arrangement.'))actions['focus-master-styler']();},
+ 'focus-master-styler'(){
+  const item=state.furniture.find(i=>i.id===selectedFurniture&&i.type===LG_STYLER.type)||state.furniture.find(i=>i.type===LG_STYLER.type&&pointInRoom(i.x,i.z)?.id==='master');if(!item)return;
+  if(lightingPreview)actions['lighting-preview']();
+  setView('dollhouse');selectFurniture(item.id);viewer?.setWalls(false);viewer?.setCeiling(false);$('#full-walls').checked=false;$('#show-ceiling').checked=false;viewer?.focusFurniture(item.id);updateViewCopy('LG Styler and wardrobe');$('.scene-panel').scrollIntoView({block:'nearest'});
+ },
  'apply-kitchen-prep'(){
   if(commit(draft=>{const modules=kitchenPrepModules(draft.kitchen);if(!modules)throw new Error('This adjustment needs a wide sink cabinet between the dishwasher and stove.');draft.kitchen.modules=modules;},'Sink moved next to the dishwasher. More worktop is now clear beside the stove.')){
    if(lightingPreview)actions['lighting-preview']();
@@ -335,6 +388,12 @@ const actions={
   }
  },
  'apply-living-seating'(){if(commit(draft=>{if(!applyLivingSeating(draft))throw new Error('Add a coffee table first, then apply the living seating.');},'Veronica table and two Solange chairs applied.'))actions['focus-living-seating']();},
+ 'apply-l-sofa'(){const layout=$('#l-sofa-layout')?.value??'balcony-chaise';if(commit(draft=>{if(!applyLShapedSofa(draft,{layout,arrange:true}))throw new Error('Add a sofa in the living room first.');},'L-shaped sofa arranged beside the balcony.'))actions['focus-l-sofa']();},
+ 'focus-l-sofa'(){
+  const item=state.furniture.find(i=>i.id===selectedFurniture&&i.type===L_SOFA.type)||state.furniture.find(i=>i.type===L_SOFA.type&&pointInRoom(i.x,i.z)?.id==='living');if(!item)return;
+  if(lightingPreview)actions['lighting-preview']();
+  setView('dollhouse');selectFurniture(item.id);viewer?.setWalls(false);viewer?.setCeiling(false);$('#full-walls').checked=false;$('#show-ceiling').checked=false;viewer?.focusFurniture(item.id);updateViewCopy('L-shaped sofa by the balcony');$('.scene-panel').scrollIntoView({block:'nearest'});
+ },
  'focus-living-seating'(){
   const item=state.furniture.find(i=>i.type===VERONICA_COFFEE.type)||state.furniture.find(i=>i.type===SOLANGE_CHAIR.type);if(!item)return;
   if(lightingPreview)actions['lighting-preview']();
@@ -349,6 +408,10 @@ const actions={
   if(lightingPreview)actions['lighting-preview']();
   setView('dollhouse');selectRoom('yard',false);viewer?.setWalls(false);viewer?.setCeiling(false);$('#full-walls').checked=false;$('#show-ceiling').checked=false;viewer?.focusYardStorage();$('.scene-panel').classList.add('yard-storage-view');updateViewCopy('Fridge & appliance storage');$('.scene-panel').scrollIntoView({block:'nearest'});
  },
+ 'focus-db-vacuum'(){
+  if(lightingPreview)actions['lighting-preview']();
+  setView('dollhouse');selectRoom('yard',false);setTab('walls');editorSections.open('walls:db-vacuum');viewer?.setWalls(false);viewer?.setCeiling(false);$('#full-walls').checked=false;$('#show-ceiling').checked=false;viewer?.focusYardStorage(true);$('.scene-panel').classList.add('yard-storage-view');updateViewCopy('Robot vacuum in lower DB cabinet');$('.scene-panel').scrollIntoView({block:'nearest'});
+ },
  'apply-bedroom-office'(){if(commit(s=>{applyBedroomOffice(s,{arrange:true});},'Bedroom 2 is now a two-person office. Undo restores the previous room.'))actions['focus-bedroom-office']();},
  'focus-bedroom-office'(){
   if(lightingPreview)actions['lighting-preview']();
@@ -358,6 +421,15 @@ const actions={
   if(lightingPreview)actions['lighting-preview']();
   setView('dollhouse');selectRoom('kitchen',false);setTab('kitchen');viewer?.setWalls(false);viewer?.setCeiling(false);$('#full-walls').checked=false;$('#show-ceiling').checked=false;viewer?.focusEndUpper();updateViewCopy('End-cabinet door clearance');$('.scene-panel').scrollIntoView({block:'nearest'});
  },
+ 'focus-front-upper'(){
+  if(lightingPreview)actions['lighting-preview']();
+  setView('dollhouse');selectRoom('kitchen',false);setTab('kitchen');editorSections.open('kitchen:front-upper');viewer?.setWalls(false);viewer?.setCeiling(false);$('#full-walls').checked=false;$('#show-ceiling').checked=false;viewer?.focusFrontUpper();updateViewCopy('Living-end upper cabinet');$('.scene-panel').scrollIntoView({block:'nearest'});
+ },
+ 'focus-kitchen-fan'(){
+  if(lightingPreview)actions['lighting-preview']();
+  setView('walk');selectRoom('kitchen',false);setTab('kitchen');editorSections.open('kitchen:directional-fan');viewer?.setWalls(true);viewer?.setCeiling(true);$('#full-walls').checked=true;$('#show-ceiling').checked=true;viewer?.focusKitchenFan();$('.scene-panel').classList.add('yard-storage-view');updateViewCopy('Kitchen fan placement');$('.scene-panel').scrollIntoView({block:'nearest'});
+ },
+ 'focus-kitchen-fan-detail'(){actions['focus-kitchen-fan']();viewer?.focusKitchenFan(true);updateViewCopy('Kitchen fan close up');},
  'lighting-preview'(){
   lightingPreview=!lightingPreview;viewer?.setLightingPreview(lightingPreview);
   if(lightingPreview){setView('walk');selectRoom('kitchen',false);viewer?.focusKitchenLighting();updateViewCopy('Kitchen');$('.scene-panel').scrollIntoView({block:'nearest'});}
@@ -379,7 +451,7 @@ document.addEventListener('click',event=>{
  if(d.action&&actions[d.action]){actions[d.action]();return;}
  if(d.room){selectRoom(d.room);return;}if(d.tab){setTab(d.tab);return;}if(d.view){setView(d.view);return;}
  if(d.paint){commit(s=>{s.wallColors[currentRoom]=d.paint;});return;}if(d.finish){commit(s=>{setKitchenColor(s.kitchen,'color',d.finish);});return;}if(d.style){commit(s=>{s.kitchen.style=d.style;});return;}
- if(d.yardFinish){commit(s=>{s.yardCabinetColor=d.yardFinish;});return;}
+ if(d.yardFinish){commit(s=>{setYardCabinetColor(s,d.yardFinish);});return;}
  if(d.upperFinish){commit(s=>{setKitchenColor(s.kitchen,'upperColor',d.upperFinish);});return;}
  if(d.backsplashFinish){commit(s=>{s.kitchen.backsplashColor=d.backsplashFinish;});return;}
  if(d.module){selectedCabinet=d.module;renderInspector();return;}if(d.variant){editFurniture(i=>{i.variant=d.variant;});return;}
@@ -405,14 +477,17 @@ document.addEventListener('change',async event=>{
  if(input.id==='upper-cabinets'){commit(s=>{s.kitchen.upper=input.checked;});return;}
  if(input.id==='fridge-surround'){commit(s=>{s.yard??={fridgeSurround:false,laundry:'stacked'};s.yard.fridgeSurround=input.checked;if(input.checked)s.yard.fridgeModel='panasonic-nr-f603gt-ss';});return;}
  if(input.id==='yard-laundry'){commit(s=>{s.yard??={fridgeSurround:false,laundry:'stacked'};s.yard.laundry=input.value;if(input.value==='combo-tower')s.yard.laundryModel='lg-fv1413h2ba';else delete s.yard.laundryModel;});return;}
+ if(input.id==='db-robot-vacuum'){if(commit(s=>{s.yard??={fridgeSurround:false,laundry:'stacked'};if(input.value)s.yard.robotVacuum=input.value;else delete s.yard.robotVacuum;}))if(input.value)actions['focus-db-vacuum']();return;}
  if(input.id==='task-lighting'){commit(s=>{s.kitchen.taskLighting=input.checked;});return;}
+ if(input.id==='kitchen-directional-fan'){if(commit(s=>{s.kitchen.directionalFan=input.checked;}))actions['focus-kitchen-fan']();return;}
  if(input.id==='end-upper-doors'){if(commit(s=>{if(input.value)s.kitchen.endUpperDoors=input.value;else delete s.kitchen.endUpperDoors;}))actions['focus-end-upper']();return;}
+ if(input.id==='front-upper-shelves'){if(commit(s=>{s.kitchen.frontUpperShelves=input.checked;}))actions['focus-front-upper']();return;}
  if(input.id==='module-type'){commit(s=>{const module=s.kitchen.modules.find(m=>m.id===selectedCabinet);module.type=input.value;if(module.storage&&!KITCHEN_STORAGE_TYPES[module.storage].includes(module.type))delete module.storage;});return;}
  if(input.id==='module-storage'){commit(s=>{const module=s.kitchen.modules.find(m=>m.id===selectedCabinet);if(input.value)module.storage=input.value;else delete module.storage;});return;}
  if(input.id==='replace-furniture'){const entry=getCatalogItem(input.value);if(entry){const replaced=editFurniture(i=>{if(entry.type===VINCENT_DINING.type)Object.assign(i,useVincentDining(i));else if(getLivingProduct(entry.type))Object.assign(i,useLivingProduct(i,entry.type));else if(getOfficeProduct(entry.type))Object.assign(i,useOfficeProduct(i,entry.type));else{i.type=entry.type;i.label=entry.label;i.color=entry.color;}});if(replaced&&entry.type===VINCENT_DINING.type)actions['focus-dining']();else if(replaced&&getLivingProduct(entry.type))actions['focus-living-seating']();else if(replaced&&getOfficeProduct(entry.type))actions['focus-bedroom-office']();}return;}
  const field=input.dataset.field,value=input.type==='range'?Number(input.value):input.value;
  if(field==='wall-color')commit(s=>{s.wallColors[currentRoom]=value;});
- else if(field==='yard-cabinet-color')commit(s=>{s.yardCabinetColor=value;});
+ else if(field==='yard-cabinet-color')commit(s=>{setYardCabinetColor(s,value);});
  else if(field==='furniture-color')editFurniture(i=>{i.color=value;});
  else if(field==='module-width')commit(s=>{s.kitchen.modules.find(m=>m.id===selectedCabinet).width=value;});
  else if(['kitchen-color','upper-color','counter-color','backsplash-color','kitchen-depth','kitchen-height'].includes(field)){const key={'kitchen-color':'color','upper-color':'upperColor','counter-color':'counterColor','backsplash-color':'backsplashColor','kitchen-depth':'depth','kitchen-height':'height'}[field];commit(s=>{setKitchenColor(s.kitchen,key,value);});}
@@ -449,7 +524,7 @@ kitchenMaterialsUI=createKitchenMaterialsEditor({
 });
 designLibraryUI=createSavedDesignsDialog({
  getDesign:()=>state,download,notify:toast,loadDesign:loadDesignSnapshot,
- onKitchenDesignLoaded(){if(state.furniture.some(item=>item.type===OMNIDESK.type&&pointInRoom(item.x,item.z)?.id==='bedroom2'))actions['focus-bedroom-office']();else if(state.furniture.some(item=>item.type===VERONICA_COFFEE.type))actions['focus-living-seating']();else{const dining=state.furniture.find(item=>item.type===VINCENT_DINING.type);if(dining){selectedFurniture=dining.id;actions['focus-dining']();}else{setTab('kitchen');actions['focus-yard-storage']();}}}
+ onKitchenDesignLoaded(){if(state.kitchen.directionalFan)actions['focus-kitchen-fan']();else if(getDreameProduct(state.yard?.robotVacuum))actions['focus-db-vacuum']();else if(state.furniture.some(item=>item.type===L_SOFA.type&&pointInRoom(item.x,item.z)?.id==='living'))actions['focus-l-sofa']();else if(state.furniture.some(item=>item.type===LG_STYLER.type&&pointInRoom(item.x,item.z)?.id==='master'))actions['focus-master-styler']();else if(state.furniture.some(item=>item.type===OMNIDESK.type&&pointInRoom(item.x,item.z)?.id==='bedroom2'))actions['focus-bedroom-office']();else if(state.furniture.some(item=>item.type===VERONICA_COFFEE.type))actions['focus-living-seating']();else{const dining=state.furniture.find(item=>item.type===VINCENT_DINING.type);if(dining){selectedFurniture=dining.id;actions['focus-dining']();}else{setTab('kitchen');actions['focus-yard-storage']();}}}
 });
 syncDesign();
 try{

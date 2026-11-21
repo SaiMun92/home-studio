@@ -2,12 +2,18 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { FURNITURE_CATALOG, getCatalogItem } from './catalog.js';
 import { kitchenRun, BUILT_IN_CABINETS, WINDOW_LEDGES } from './layout.js';
-import { kitchenMaterial, projectKitchenMaterialUVs } from './material-textures.js';
+import { kitchenMaterial, projectKitchenMaterialUVs, yardCabinetMaterial } from './material-textures.js';
+import { yardCabinetSpecs } from './yard-layout.js';
 import { createVincentDining } from './vincent-dining.js';
 import { createVeronicaCoffee } from './veronica-coffee.js';
 import { createSolangeChair } from './solange-chair.js';
 import { endUpperLayout, UPPER_CABINET_DEPTH, UPPER_DOOR_OFFSET } from './kitchen-end-doors.js';
 import { createOmnidesk, createOfficeChair } from './office-furniture.js';
+import { createLgStyler } from './lg-styler.js';
+import { createLSofa } from './l-sofa.js';
+import {getDreameProduct,DB_VACUUM_OPENING} from './dreame-product.js';
+import {createKitchenFan} from './kitchen-fan.js';
+import {kitchenFanPlacement} from './kitchen-fan-placement.js';
 
 export { FURNITURE_CATALOG, getCatalogItem };
 
@@ -371,6 +377,7 @@ export function createFurniture(item) {
   const original = item.variant !== 'modern';
   switch (type) {
     case 'sofa': sofa(group, p, original); break;
+    case 'l-sofa': createLSofa(group, color); break;
     case 'armchair': armchair(group, p, original); break;
     case 'solange-chair': createSolangeChair(group, color); break;
     case 'coffee': coffeeTable(group, p, original); break;
@@ -383,6 +390,7 @@ export function createFurniture(item) {
     case 'omnidesk-classic': createOmnidesk(group, color); break;
     case 'office-chair': createOfficeChair(group, color); break;
     case 'wardrobe': wardrobe(group, p, original); break;
+    case 'lg-styler-s3mfc': createLgStyler(group, color); break;
     case 'console': consoleUnit(group, p, original); break;
     case 'storage': bookshelf(group, p); break;
     case 'plant': plant(group, p); break;
@@ -443,10 +451,12 @@ export function createWindowLedges() {
   return group;
 }
 
-export function createBuiltInCabinets(yardCabinetColor) {
+export function createBuiltInCabinets(yardCabinetColor, yard) {
   const group = new THREE.Group();
   group.name = 'Existing built-in cabinets';
-  for (const spec of BUILT_IN_CABINETS) {
+  for (const original of BUILT_IN_CABINETS) {
+    const matched = original.id === 'yard-tv-cabinet' && yard?.cabinetLayout === 'matched';
+    const spec = matched ? {...original, ...yardCabinetSpecs(yard).tv} : original;
     const cabinet = new THREE.Group();
     cabinet.name = spec.label;
     cabinet.userData.fixtureId = spec.id;
@@ -459,20 +469,28 @@ export function createBuiltInCabinets(yardCabinetColor) {
     const depth = sideways ? spec.width : spec.depth;
     const height = spec.height;
     const tall = spec.id === 'yard-tv-cabinet';
+    const vacuumOpening = tall && getDreameProduct(yard?.robotVacuum);
     const finishColor = tall ? (yardCabinetColor ?? spec.color) : spec.color;
-    const finish = tall
+    const finish = matched ? yardCabinetMaterial(yard, finishColor) : tall
       ? new THREE.MeshPhysicalMaterial({color:finishColor,roughness:.23,clearcoat:.7,clearcoatRoughness:.18})
       : material(finishColor, {roughness:.65});
-    const carcass = material(shade(finishColor, -.06));
+    const carcass = matched ? finish : material(shade(finishColor, -.06));
     const top = tall ? finish : material('#bbaa8e', {roughness:.53});
-    box(cabinet, width-.03, .08, depth-.07, material('#514637'), 0, .04, -.015);
-    box(cabinet, width, height-.11, depth-.045, carcass, 0, .08+(height-.11)/2, -.0225);
+    if(vacuumOpening){
+      const {height:openingHeight,panelThickness:t}=DB_VACUUM_OPENING;
+      for(const side of [-1,1])box(cabinet,t,.75,depth,carcass,side*(width-t)/2,.375,0).name=side<0?'DB vacuum left supporting panel':'DB vacuum right supporting panel';
+      box(cabinet,width-2*t,t,depth,carcass,0,openingHeight+t/2,0).name='DB vacuum ceiling shelf';
+      box(cabinet,width,height-.78,depth-.045,carcass,0,.75+(height-.78)/2,-.0225).name='Retained upper DB cabinet body';
+    }else{
+      box(cabinet, width-.03, .08, depth-.07, matched ? finish : material('#514637'), 0, .04, -.015);
+      box(cabinet, width, height-.11, depth-.045, carcass, 0, .08+(height-.11)/2, -.0225);
+    }
     box(cabinet, width, .03, depth, top, 0, height-.015, 0);
-    // Closed doors match the references; the yard cabinet conceals the TV box.
+    // Closed doors match the references; the yard cabinet conceals the DB box.
     const frontZ = depth/2-.035;
     if (tall) {
       for (const x of [-width/4, width/4]) {
-        cabinetFront(cabinet, width/2-.007, .625, x, .4075, frontZ, finish, 'flat', finish);
+        if(!vacuumOpening)cabinetFront(cabinet, width/2-.007, .625, x, .4075, frontZ, finish, 'flat', finish);
         cabinetFront(cabinet, width/2-.007, height-1.05, x, .75+(height-1.05)/2, frontZ, finish, 'flat', finish);
       }
       box(cabinet, width, .27, .025, finish, 0, height-.165, frontZ);
@@ -485,6 +503,7 @@ export function createBuiltInCabinets(yardCabinetColor) {
       }
     }
   }
+  projectKitchenMaterialUVs(group);
   return group;
 }
 
@@ -652,6 +671,7 @@ export function createKitchen(kitchen, taskLightPool = []) {
     }
   }
   const endUpper = endUpperLayout(kitchen, modules, run);
+  let firstUpper = true;
   let cursor = run.start;
   for (const module of modules) {
     const width = Number(module.width) || .6;
@@ -762,9 +782,28 @@ export function createKitchen(kitchen, taskLightPool = []) {
         const upperWidth = endUpper ? Math.max(0, Math.min(cursor, endUpper.start) - moduleStart) : width;
         if (upperWidth < .000001) continue;
         let upperBay = cabinet;
-        if (Math.abs(upperWidth - width) > 1e-9) {
-          upperBay = new THREE.Group();upperBay.name = 'Upper bay before end cabinet';
+        const frontUpper = firstUpper && !narrowFill && upperWidth >= .15;
+        if (frontUpper || Math.abs(upperWidth - width) > 1e-9) {
+          upperBay = new THREE.Group();upperBay.name = frontUpper ? 'Living-end upper cabinet' : 'Upper bay before end cabinet';
           upperBay.position.x = (upperWidth - width) / 2;cabinet.add(upperBay);
+        }
+        if (frontUpper) firstUpper = false;
+        if (frontUpper && kitchen.frontUpperShelves === true) {
+          // Keep the open front and three ledges, with a full-height panel
+          // closing the exposed living end inside the original bay width.
+          const thickness = .018;
+          const side = box(upperBay, thickness, upperHeight, upperDepth, upper,
+            -upperWidth / 2 + thickness / 2, 1.55 + upperHeight / 2, upperZ, .002);
+          side.name = 'Open upper outer side panel';
+          side.userData.openUpperSidePanel = true;
+          for (let index = 0; index < 3; index++) {
+            const shelf = box(upperBay, upperWidth - thickness, thickness, upperDepth, upper, thickness / 2,
+              1.55 + thickness / 2 + index * (upperHeight - thickness) / 2, upperZ, .002);
+            shelf.name = `Open upper ledge ${index + 1}`;
+            shelf.userData.openUpperShelf = true;
+          }
+          addUpperStrip(upperBay, upperWidth, upperZ, upperDepth);
+          continue;
         }
         box(upperBay, upperWidth, upperHeight, upperDepth, upper, 0, 1.55 + upperHeight / 2, upperZ, .004);
         if (narrowFill || upperWidth < .15) continue;
@@ -789,5 +828,6 @@ export function createKitchen(kitchen, taskLightPool = []) {
     addUpperStrip(cabinet, endUpper.width, upperZ, upperDepth);
   }
   projectKitchenMaterialUVs(group);
+  if(kitchen.directionalFan)createKitchenFan(group,kitchenFanPlacement(kitchen));
   return group;
 }

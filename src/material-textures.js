@@ -39,6 +39,11 @@ export function kitchenMaterial(id,kind,fallbackColor,properties={}){
   return material;
 }
 
+// The matched yard row has one finish, independent of the kitchen uppers.
+export function yardCabinetMaterial(yard,color){
+  return kitchenMaterial(yard?.cabinetMaterial,'laminate',color??'#c76530',{roughness:.52});
+}
+
 // Project in the kitchen's unmirrored coordinates so adjacent worktops share
 // veining and drawer rows share vertical grain. Pattern scale is illustrative.
 export function projectKitchenMaterialUVs(group){

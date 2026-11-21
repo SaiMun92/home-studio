@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
-import {FIXTURES} from './layout.js';
-import {YARD_CARPENTRY,YARD_APPLIANCES} from './yard-layout.js';
-import {kitchenMaterial,projectKitchenMaterialUVs} from './material-textures.js';
+import {FIXTURES,FLOOR_SURFACE_Y} from './layout.js';
+import {YARD_CARPENTRY,YARD_APPLIANCES,yardCabinetSpecs,yardRobotVacuum} from './yard-layout.js';
+import {createDreameVacuum} from './dreame-vacuum.js';
+import {kitchenMaterial,projectKitchenMaterialUVs,yardCabinetMaterial} from './material-textures.js';
 
 const material=(color,roughness=.72,properties={})=>new THREE.MeshStandardMaterial({color,roughness,...properties});
 function mesh(parent,name,geometry,mat,x=0,y=0,z=0){
@@ -79,8 +80,8 @@ function sidePanels(parent,spec,finish){
   for(const side of [-1,1])box(parent,side<0?'Left supporting panel':'Right supporting panel',t,spec.height,spec.depth,finish,side*(spec.width-t)/2,spec.height/2,0);
   box(parent,'Carpentry top panel',spec.width-2*t,t,spec.depth,finish,0,spec.height-t/2,0);
 }
-function fridgeSurround(parent,finish,upper,handles){
-  const s=YARD_CARPENTRY.fridge,t=s.panelThickness;
+function fridgeSurround(parent,s,finish,upper,handles){
+  const t=s.panelThickness;
   const result=group(parent,'Fridge surround and overhead cupboard',s.id,s.x,0,s.z);
   sidePanels(result,s,finish);
   const h=s.height-s.cupboardBottom;
@@ -164,8 +165,8 @@ function blender(parent,y,black,metal){
   box(result,'Blender pitcher handle',.018,.17,.025,black,.111,.234,.015,.006);
   return result;
 }
-function applianceTower(parent,finish,white,metal,dark){
-  const s=YARD_CARPENTRY.laundry,t=s.panelThickness;
+function applianceTower(parent,s,finish,white,metal,dark){
+  const t=s.panelThickness;
   comboWasher(parent,white,metal,dark);
   const result=group(parent,'Open appliance cabinet above washer dryer',s.id,s.x,0,s.z);
   sidePanels(result,s,finish);
@@ -189,14 +190,23 @@ export function createYardAppliances(design={}){
   if(design.yard?.fridgeModel==='panasonic-nr-f603gt-ss'||design.yard?.fridgeSurround===true)proposedRefrigerator(result);
   else refrigerator(result,white,metal);
   const kitchen=design.kitchen??{};
-  const finish=design.yard?.fridgeSurround===true||design.yard?.laundry==='combo-tower'
+  const matched=design.yard?.cabinetLayout==='matched',specs=yardCabinetSpecs(design.yard);
+  const finish=matched?yardCabinetMaterial(design.yard,design.yardCabinetColor):design.yard?.fridgeSurround===true||design.yard?.laundry==='combo-tower'
     ? kitchenMaterial(kitchen.lowerMaterial,'laminate',kitchen.color??'#c76530',{roughness:.52}):null;
   if(design.yard?.fridgeSurround===true){
-    const upper=kitchenMaterial(kitchen.upperMaterial,'laminate',kitchen.upperColor??'#f0eee7',{roughness:.58});
-    fridgeSurround(result,finish,upper,material('#a99b79',.3,{metalness:.74}));
+    const upper=matched?finish:kitchenMaterial(kitchen.upperMaterial,'laminate',kitchen.upperColor??'#f0eee7',{roughness:.58});
+    fridgeSurround(result,specs.fridge,finish,upper,material('#a99b79',.3,{metalness:.74}));
   }
-  if(design.yard?.laundry==='combo-tower')applianceTower(result,finish,white,metal,dark);
+  if(design.yard?.laundry==='combo-tower')applianceTower(result,specs.laundry,finish,white,metal,dark);
   else laundryStack(result,white,metal,dark);
+  const vacuum=yardRobotVacuum(design.yard);
+  if(vacuum){
+    const assembly=group(result,vacuum.product.label+' in lower DB cabinet','yard-robot-vacuum',vacuum.x,FLOOR_SURFACE_Y,vacuum.z);
+    assembly.rotation.y=Math.PI;
+    const product=createDreameVacuum(assembly,vacuum.product);
+    // Keep the printed wordmark readable when the home's plan is mirrored.
+    if(design.mirrored)product.getObjectByName('Dreame front wordmark').scale.x=-1;
+  }
   projectKitchenMaterialUVs(result);
   return result;
 }

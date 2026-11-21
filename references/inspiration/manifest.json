@@ -1,6 +1,6 @@
 {
   "kind": "design-inspiration",
-  "reviewed": "2026-11-18",
+  "reviewed": "2026-11-21",
   "items": [
     {
       "id": "fridge-surround-inspiration",
@@ -48,6 +48,21 @@
       "label": "Omnidesk Classic Wildwood Small, Pheasantwood and black frame",
       "observation": "Homeowner selected the Small desk in the supplied configured URL: 122 × 76 cm, Pheasantwood top and black Classic frame. The official product page gives a 74–121 cm height range; the model is shown at 74 cm. Wood grain, 26 mm top thickness, monitor and ergonomic chair details are illustrative. The room becomes a two-person office; the bed is removed and the built-in wardrobe stays in place at the homeowner’s explicit request.",
       "productUrl": "https://theomnidesk.com/products/classic-wildwood?desk=table-top-wildwood-straight-edge-small_42678804938921_43170103197865&cmb=advanced-cable-management-bar-copy_47064120262825"
+    },
+    {
+      "id": "lg-styler-s3mfc",
+      "src": "./references/inspiration/lg-styler-s3mfc.jpg",
+      "sourcePath": "inspiration/lg-styler-s3mfc-reference.png",
+      "label": "LG Styler S3MFC, Essence Mirrored Finish",
+      "observation": "Homeowner selected this product for placement beside the master-bedroom wardrobe. LG Singapore specifies 445 W × 1850 H × 585 D mm, Essence Mirrored Finish and touch controls. The closed exterior and mirror appearance are illustrative; the physical product dimensions are retained.",
+      "productUrl": "https://www.lg.com/sg/laundry/styler/s3mfc/"
+    },
+    {
+      "id": "kitchen-directional-fan",
+      "src": "./references/inspiration/kitchen-directional-fan.jpg",
+      "sourcePath": "inspiration/kitchen-directional-fan-reference.png",
+      "label": "Three-blade metal directional fan inspiration",
+      "observation": "Homeowner selected Image #1 style for the kitchen entrance position. Brand, exact model and dimensions are unconfirmed. The rendered 300 mm blade sweep and nominal 450 mm drop are illustrative."
     }
   ]
 }

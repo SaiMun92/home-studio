@@ -1,6 +1,7 @@
 import {getCatalogItem} from './catalog.js';
-import {yardCarpentryFixtures} from './yard-layout.js';
+import {yardCarpentryFixtures,YARD_DB_PROJECTION} from './yard-layout.js';
 import {isTuckedOfficeChair} from './office-products.js';
+import {L_SOFA,lSofaFootprintRects} from './l-sofa-spec.js';
 
 export const PLAN = {width:10.8,depth:9.05,height:2.7,scale:.018,area:93,estimated:true};
 // Estimated from inner-kitchen.jpeg: the working run ends at the forward
@@ -49,9 +50,10 @@ const containsRoomPoint=(room,x,z,padding=0)=>roomRegions(room).some(([x1,z1,x2,
 const fixture=(id,room,x,z,width,depth,blocksWalk=true)=>({id,room,x,z,width,depth,blocksWalk});
 // Dimensions are estimates from the entrance video and inner-kitchen photo.
 // Width/depth describe the world-space footprint before mirroring the home.
+export const FLOOR_SURFACE_Y=.0225;
 export const BUILT_IN_CABINETS=[
   {id:'entry-cabinet',label:'Entrance shoe cabinet',room:'entry',x:9.3,z:7.16,width:.4,depth:2.4,height:1.06,rotation:90,color:'#aa906c',style:'slatted'},
-  {id:'yard-tv-cabinet',label:'Yard TV-box cabinet',room:'yard',x:6.53,z:8.6,width:.6,depth:.6,height:2.65,rotation:180,color:'#c76530',style:'flat'}
+  {id:'yard-tv-cabinet',label:'Yard DB-box cabinet',room:'yard',x:6.53,z:YARD_DB_PROJECTION.front-.6/2,width:.6,depth:.6,height:2.65,rotation:180,color:'#c76530',style:'flat'}
 ];
 // The homeowner requested half-height ledges in both bedrooms and the study.
 // Lengths follow the main window openings; depths/positions remain estimates.
@@ -115,7 +117,10 @@ export const WALLS = [
   wall('south-inner',[2.16,7.06],[7.43,7.06],'study','yard',[{offset:.2,width:1.1,sill:1.1,height:1.2},{offset:1.95,width:1.05,sill:1.2,height:1.0}],.16),
   // Open behind the living-facing extension; solid beside the front door.
   wall('kitchen-entry',[9.02,KITCHEN_PARTITION_START],[9.02,9.02],'kitchen','entry'),
-  {...wall('kitchen-end-projection',[8.35,8.72],[KITCHEN_RUN.back,8.72],'yard','yard',[],.44),finish:'wall-tile'},
+  // Keep both structural returns visible beside the tall yard cabinetry in
+  // dollhouse view, including the newly confirmed wall behind the DB box.
+  {...wall(YARD_DB_PROJECTION.id,[YARD_DB_PROJECTION.left,(YARD_DB_PROJECTION.front+YARD_DB_PROJECTION.back)/2],[YARD_DB_PROJECTION.right,(YARD_DB_PROJECTION.front+YARD_DB_PROJECTION.back)/2],'yard','yard',[],YARD_DB_PROJECTION.back-YARD_DB_PROJECTION.front),finish:'wall-tile',fullHeight:true},
+  {...wall('kitchen-end-projection',[8.35,8.72],[KITCHEN_RUN.back,8.72],'yard','yard',[],.44),finish:'wall-tile',fullHeight:true},
   wall('yard-entry',[9.02,8.44],[9.5,8.44],'yard','entry'),
   wall('living-glass',[5.5,1.08],[10.7,1.08],'living','planter',[{offset:.12,width:4.96,sill:.08,height:2.35}],.1)
 ];
@@ -156,6 +161,15 @@ export function footprint(item){
   const w=(item.width??entry.width)/2,d=(item.depth??entry.depth)/2,a=(item.rotation??0)*Math.PI/180;
   return [[-w,-d],[w,-d],[w,d],[-w,d]].map(([x,z])=>[item.x+x*Math.cos(a)+z*Math.sin(a),item.z-x*Math.sin(a)+z*Math.cos(a)]);
 }
+export function footprintParts(item){
+  if(item.type!==L_SOFA.type){const points=footprint(item);return points.length?[points]:[];}
+  const a=(item.rotation??0)*Math.PI/180,mirror=item.mirrored?-1:1;
+  return lSofaFootprintRects(item.width??L_SOFA.width,item.depth??L_SOFA.depth).map(part=>
+    [[-1,-1],[1,-1],[1,1],[-1,1]].map(([sx,sz])=>{
+      const x=(part.x+sx*part.width/2)*mirror,z=part.z+sz*part.depth/2;
+      return [item.x+x*Math.cos(a)+z*Math.sin(a),item.z-x*Math.sin(a)+z*Math.cos(a)];
+    }));
+}
 export function overlap(a,b,padding=.01){
   for(const polygon of [a,b])for(let i=0;i<polygon.length;i++){
     const q=polygon[i],r=polygon[(i+1)%polygon.length],axis=[-(r[1]-q[1]),r[0]-q[0]];
@@ -165,22 +179,27 @@ export function overlap(a,b,padding=.01){
 }
 const rect=(x,z,w,d)=>[[x-w/2,z-d/2],[x+w/2,z-d/2],[x+w/2,z+d/2],[x-w/2,z+d/2]];
 const physicalWalls=WALLS.flatMap(w=>wallSegments(w)).filter(s=>s.y-s.height/2<.1);
+function fixedFixtures(yard){
+  const carpentry=yardCarpentryFixtures(yard);
+  const replacements=new Set(carpentry.map(fixture=>fixture.id));
+  return [...FIXTURES.filter(fixture=>!replacements.has(fixture.id)),...carpentry];
+}
 export function canPlace(item,others=[],kitchen=null,yard=null){
-  const corners=footprint(item);if(!corners.length)return {ok:false,reason:'Choose a furniture type.'};
-  const samples=[...corners,[item.x,item.z],...corners.map((p,i)=>[(p[0]+corners[(i+1)%4][0])/2,(p[1]+corners[(i+1)%4][1])/2])];
+  const parts=footprintParts(item);if(!parts.length)return {ok:false,reason:'Choose a furniture type.'};
+  const samples=parts.flatMap(corners=>[...corners,...corners.map((p,i)=>[(p[0]+corners[(i+1)%4][0])/2,(p[1]+corners[(i+1)%4][1])/2]),[corners.reduce((n,p)=>n+p[0],0)/4,corners.reduce((n,p)=>n+p[1],0)/4]]);
   if(samples.some(([x,z])=>!ROOMS.some(r=>r.walkable&&containsRoomPoint(r,x,z,.08))))return {ok:false,reason:'Keep the furniture inside a room.'};
-  if(physicalWalls.some(s=>overlap(corners,rect(s.x,s.z,s.width+.03,s.depth+.03))))return {ok:false,reason:'That position intersects a wall.'};
-  if([...FIXTURES,...yardCarpentryFixtures(yard)].some(f=>overlap(corners,rect(f.x,f.z,f.width,f.depth),0)))return {ok:false,reason:'That position overlaps a fixed fixture.'};
-  if(others.some(other=>other.id!==item.id&&overlap(corners,footprint(other))&&!isTuckedOfficeChair(item,other)))return {ok:false,reason:'That position overlaps another piece of furniture.'};
-  if(kitchen){const run=kitchenRun(kitchen);if(overlap(corners,rect(run.x,run.z,run.width,run.depth)))return {ok:false,reason:'Leave the kitchen cabinets clear.'};}
+  if(physicalWalls.some(s=>parts.some(corners=>overlap(corners,rect(s.x,s.z,s.width+.03,s.depth+.03)))))return {ok:false,reason:'That position intersects a wall.'};
+  if(fixedFixtures(yard).some(f=>parts.some(corners=>overlap(corners,rect(f.x,f.z,f.width,f.depth),0))))return {ok:false,reason:'That position overlaps a fixed fixture.'};
+  if(others.some(other=>other.id!==item.id&&!isTuckedOfficeChair(item,other)&&parts.some(corners=>footprintParts(other).some(otherCorners=>overlap(corners,otherCorners)))))return {ok:false,reason:'That position overlaps another piece of furniture.'};
+  if(kitchen){const run=kitchenRun(kitchen);if(parts.some(corners=>overlap(corners,rect(run.x,run.z,run.width,run.depth))))return {ok:false,reason:'Leave the kitchen cabinets clear.'};}
   return {ok:true};
 }
 export function canWalk(x,z,radius=.18,design={}){
   if(!ROOMS.some(r=>r.walkable&&containsRoomPoint(r,x,z,.12)))return false;
   const blocks=s=>x>s.x-s.width/2-radius&&x<s.x+s.width/2+radius&&z>s.z-s.depth/2-radius&&z<s.z+s.depth/2+radius;
-  if(physicalWalls.some(blocks)||[...FIXTURES,...yardCarpentryFixtures(design.yard)].some(f=>f.blocksWalk&&blocks(f)))return false;
+  if(physicalWalls.some(blocks)||fixedFixtures(design.yard).some(f=>f.blocksWalk&&blocks(f)))return false;
   const body=rect(x,z,radius*2,radius*2);
-  if(design.furniture?.some(item=>overlap(body,footprint(item),0)))return false;
+  if(design.furniture?.some(item=>footprintParts(item).some(corners=>overlap(body,corners,0))))return false;
   if(design.kitchen){
     const run=kitchenRun(design.kitchen);
     if(overlap(body,rect(run.x,run.z,run.width,run.depth),0))return false;

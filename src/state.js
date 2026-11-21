@@ -2,6 +2,7 @@ import { FURNITURE_CATALOG } from './catalog.js';
 import { ROOMS, KITCHEN_RUN_LENGTH, BUILT_IN_CABINETS } from './layout.js';
 import { KITCHEN_MATERIALS, KITCHEN_MATERIAL_FIELDS } from './kitchen-materials.js';
 import { KITCHEN_STORAGE, KITCHEN_STORAGE_TYPES } from './kitchen-storage.js';
+import {DREAME_X60_MODELS} from './dreame-product.js';
 
 const PAINTABLE_ROOMS = ROOMS.filter(room => room.walkable);
 const ROOM_IDS = PAINTABLE_ROOMS.map(room => room.id);
@@ -9,6 +10,7 @@ const CABINET_TYPES = new Set(['doors', 'drawers', 'sink', 'hob', 'dishwasher', 
 const CABINET_STYLES = new Set(['flat', 'shaker', 'slatted']);
 const FURNITURE_VARIANTS = new Set(['classic', 'modern']);
 const YARD_LAUNDRY_LAYOUTS = new Set(['stacked', 'combo-tower']);
+const YARD_CABINET_LAYOUTS = new Set(['matched']);
 const CATALOG = new Map(FURNITURE_CATALOG.map(item => [item.type, item]));
 const COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
 const MAX_HISTORY = 100;
@@ -154,6 +156,16 @@ export function validateDesign(input) {
     for (const [key,model] of [['fridgeModel','panasonic-nr-f603gt-ss'],['laundryModel','lg-fv1413h2ba']]) {
       if (Object.hasOwn(suppliedYard,key)) yard[key]=supported(field(suppliedYard,key,`Yard ${key}`),new Set([model]),`Yard ${key}`);
     }
+    if (Object.hasOwn(suppliedYard,'cabinetLayout')) {
+      yard.cabinetLayout=supported(field(suppliedYard,'cabinetLayout','Yard cabinet layout'),YARD_CABINET_LAYOUTS,'Yard cabinet layout');
+    }
+    if (Object.hasOwn(suppliedYard,'robotVacuum')) {
+      yard.robotVacuum=supported(field(suppliedYard,'robotVacuum','Yard robot vacuum'),new Set(Object.keys(DREAME_X60_MODELS)),'Yard robot vacuum');
+    }
+    if (Object.hasOwn(suppliedYard,'cabinetMaterial')) {
+      const choices=new Set(KITCHEN_MATERIALS.filter(material=>material.kind==='laminate').map(material=>material.id));
+      yard.cabinetMaterial=supported(field(suppliedYard,'cabinetMaterial','Yard cabinet material'),choices,'Yard cabinet material');
+    }
   }
 
   const rooms = record(field(design, 'wallColors', 'Room wall colors'), 'Room wall colors');
@@ -207,6 +219,16 @@ export function validateDesign(input) {
   if (Object.hasOwn(cabinets, 'endUpperDoors')) {
     kitchen.endUpperDoors = supported(field(cabinets, 'endUpperDoors', 'Kitchen end upper doors'), new Set(['short-open','short-closed']), 'Kitchen end upper doors');
   }
+  if (Object.hasOwn(cabinets, 'frontUpperShelves')) {
+    const shelves = field(cabinets, 'frontUpperShelves', 'Kitchen front upper shelves');
+    if (typeof shelves !== 'boolean') throw new Error('Kitchen front upper shelves must be true or false.');
+    kitchen.frontUpperShelves = shelves;
+  }
+  if (Object.hasOwn(cabinets, 'directionalFan')) {
+    const fan = field(cabinets, 'directionalFan', 'Kitchen directional fan');
+    if (typeof fan !== 'boolean') throw new Error('Kitchen directional fan must be true or false.');
+    kitchen.directionalFan = fan;
+  }
   for(const [key,kind] of Object.entries(KITCHEN_MATERIAL_FIELDS)){
     if(!Object.hasOwn(cabinets,key))continue;
     const choices=new Set(KITCHEN_MATERIALS.filter(material=>material.kind===kind).map(material=>material.id));
@@ -255,6 +277,7 @@ export function resetOriginalColors(design) {
   for (const field of ['color', 'upperColor', 'counterColor', 'backsplashColor']) reset.kitchen[field] = original.kitchen[field];
   for (const field of Object.keys(KITCHEN_MATERIAL_FIELDS)) delete reset.kitchen[field];
   reset.yardCabinetColor = original.yardCabinetColor;
+  if (reset.yard) delete reset.yard.cabinetMaterial;
   for (const item of reset.furniture) item.color = CATALOG.get(item.type).color;
   return reset;
 }

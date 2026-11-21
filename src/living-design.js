@@ -1,5 +1,6 @@
 import {canPlace,footprint,pointInRoom} from './layout.js';
 import {SOLANGE_CHAIR,VERONICA_COFFEE,useLivingProduct} from './living-products.js';
+import {L_SOFA_CHAIR_SLOTS} from './l-sofa-layout.js';
 
 const round=value=>Math.round(value*1000)/1000;
 function chairId(items){let index=1;while(items.some(item=>item.id==='solange-'+index))index++;return 'solange-'+index;}
@@ -24,18 +25,23 @@ export function applyLivingSeating(design){
   // table. Search only nearby positions; never move the sofa or TV console.
   const origin={x:table.x,z:table.z};
   const offsets=replacing?[[.22,0],[0,0],[.12,0],[.32,0],[0,.15],[0,-.15]]:[[0,0]];
-  for(const [dx,dz] of offsets){
+  const sectional=items.find(item=>item.type==='l-sofa'&&pointInRoom(item.x,item.z)?.id==='living');
+  const plant=sectional&&items.find(item=>item.type==='plant'&&pointInRoom(item.x,item.z)?.id==='living');
+  const plantOptions=plant?[plant,{...plant,x:10.3,z:4.12}]:[null];
+  for(const candidatePlant of plantOptions)for(const [dx,dz] of offsets){
     const candidate={...table,x:round(origin.x+dx),z:round(origin.z+dz)};
-    const placed=items.map(item=>item.id===table.id?candidate:item);
+    const placed=items.map(item=>item.id===table.id?candidate:item.id===candidatePlant?.id?candidatePlant:item);
     if(!fits(candidate,placed,design))continue;
+    if(candidatePlant&&!fits(candidatePlant,placed,design))continue;
     let missing=2-chairs.length;
     // Opposite ends face the table. Alternative offsets allow an owner's
     // nearby furniture edits while retaining the same conversation layout.
-    const slots=[[-1.2,0],[1.2,180],[-1.1,0],[1.1,180],[-1.3,0],[1.3,180]];
-    for(const [offset,rotation] of slots){
+    const slots=sectional?L_SOFA_CHAIR_SLOTS[sectional.rotation===0&&sectional.mirrored?'balcony-row':'balcony-chaise']
+      :[[-1.2,0],[1.2,180],[-1.1,0],[1.1,180],[-1.3,0],[1.3,180]].map(([offset,rotation])=>({x:candidate.x,z:round(candidate.z+offset),rotation}));
+    for(const {x,z,rotation} of slots){
       if(!missing)break;
       const chair={id:chairId(placed),type:SOLANGE_CHAIR.type,label:SOLANGE_CHAIR.label,color:SOLANGE_CHAIR.color,
-        x:candidate.x,z:round(candidate.z+offset),rotation,variant:'classic',mirrored:false};
+        x,z,rotation,variant:'classic',mirrored:false};
       if(!fits(chair,placed,design))continue;
       placed.push(chair);missing--;
     }
